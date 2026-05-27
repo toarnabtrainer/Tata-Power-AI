@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Performance Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            background: rgba(173, 216, 230, 0.8); /* Icy Blue */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .glass-container {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            text-align: center;
+        }
+        #dashboard {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            width: 90%;
+            margin: 20px auto;
+        }
+        #dashboard > div {
+            height: 400px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        input[type="file"] {
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            background: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="glass-container">
+        <h2>Upload Sales Data (JSON)</h2>
+        <input type="file" id="fileInput" accept=".json">
+    </div>
+    <div id="dashboard">
+        <div id="salesTrend"></div>
+        <div id="categorySales"></div>
+        <div id="regionSales"></div>
+        <div id="customerSegment"></div>
+        <div id="shipMode"></div>
+        <div id="salesVsProfit"></div>
+    </div>
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    generateDashboard(Array.isArray(data) ? data : [data]);
+                } catch (error) {
+                    alert("Invalid JSON format. Please upload a valid sales data JSON file.");
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function generateDashboard(data) {
+            if (!data.length) {
+                alert("No data found in the uploaded file.");
+                return;
+            }
+
+            // Sales Trend Over Time
+            const salesByDate = {};
+            data.forEach(row => {
+                const date = row["Order Date"];
+                salesByDate[date] = (salesByDate[date] || 0) + row["Sales"];
+            });
+            const dates = Object.keys(salesByDate).sort();
+            const sales = dates.map(date => salesByDate[date]);
+            Plotly.newPlot('salesTrend', [{x: dates, y: sales, type: 'scatter', mode: 'lines', name: 'Sales'}], {title: 'Sales Trend Over Time'});
+
+            // Sales & Profit by Category
+            const categorySales = {};
+            data.forEach(row => {
+                const category = row["Category"];
+                categorySales[category] = (categorySales[category] || 0) + row["Sales"];
+            });
+            Plotly.newPlot('categorySales', [{x: Object.keys(categorySales), y: Object.values(categorySales), type: 'bar', name: 'Sales'}], {title: 'Sales by Category'});
+
+            // Regional Sales Performance
+            const regionSales = {};
+            data.forEach(row => {
+                const region = row["Region"];
+                regionSales[region] = (regionSales[region] || 0) + row["Sales"];
+            });
+            Plotly.newPlot('regionSales', [{x: Object.keys(regionSales), y: Object.values(regionSales), type: 'bar', name: 'Sales'}], {title: 'Sales by Region'});
+
+            // Customer Segmentation Analysis
+            const segmentSales = {};
+            data.forEach(row => {
+                const segment = row["Segment"];
+                segmentSales[segment] = (segmentSales[segment] || 0) + row["Sales"];
+            });
+            Plotly.newPlot('customerSegment', [{labels: Object.keys(segmentSales), values: Object.values(segmentSales), type: 'pie'}], {title: 'Sales by Customer Segment'});
+
+            // Order Processing Efficiency (Delivery Time)
+            const deliveryTimes = data.map(row => {
+                const orderDate = new Date(row["Order Date"]);
+                const shipDate = new Date(row["Ship Date"]);
+                return (shipDate - orderDate) / (1000 * 60 * 60 * 24); // Convert ms to days
+            });
+            Plotly.newPlot('shipMode', [{y: deliveryTimes, type: 'box', name: 'Delivery Time (days)'}], {title: 'Order Processing Efficiency'});
+
+            // Scatter Plot: Sales vs Profit
+            const salesValues = data.map(row => row["Sales"]);
+            const profitValues = data.map(row => row["Profit"]);
+            Plotly.newPlot('salesVsProfit', [{x: salesValues, y: profitValues, mode: 'markers', type: 'scatter', name: 'Sales vs Profit'}], {title: 'Sales vs Profit'});
+        }
+    </script>
+</body>
+</html>
