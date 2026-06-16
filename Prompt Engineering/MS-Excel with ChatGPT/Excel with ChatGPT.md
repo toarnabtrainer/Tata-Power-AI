@@ -53,6 +53,7 @@
 ## ✴️ **Exercise - 4**
 * 🔴 **Prompt -** `Create an Excel Macro to make an 'EMI Calculator' along with full payment schedule and calculations.` <br>
 1. ✅ Follow all the steps as mentioned in the instruction list and do the needful.
+2. ✅ "Save as" the .xlsx file with .xlsm extension to save the macro code in the file.
 ## ☑️ **Output:**
 ![image](https://github.com/user-attachments/assets/04927239-0885-4dee-9fea-2a99908c5440)
 

@@ -1,0 +1,7 @@
+Month,Active Customers,Churn Rate,NPS,Avg Response Hours,Product Adoption Rate,Tickets per 100 Customers,At-Risk Accounts
+Jan,1200,0.08,42,8.5,0.68,22,110
+Feb,1215,0.085,40,9.2,0.66,24,125
+Mar,1230,0.095,38,10.1,0.63,27,142
+Apr,1240,0.11,34,12.5,0.59,31,168
+May,1255,0.12,31,13.7,0.56,34,190
+Jun,1260,0.13,28,15.2,0.52,38,215
