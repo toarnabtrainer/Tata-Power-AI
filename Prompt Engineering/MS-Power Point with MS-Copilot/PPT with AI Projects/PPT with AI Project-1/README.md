@@ -161,6 +161,14 @@ Keep the slide executive-ready and visually clean.
 
 ---
 
+## ☑️ Prompt 7: Speaker Notes, Transitions and Animation Inclusion
+
+```text
+Please add speaker notes and suitable transition and animations to all slides.
+```
+
+---
+
 ## ☑️ Demo Flow
 
 ```text
