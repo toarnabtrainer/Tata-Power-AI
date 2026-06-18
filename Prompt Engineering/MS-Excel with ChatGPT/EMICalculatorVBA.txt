@@ -1,0 +1,222 @@
+Option Explicit
+
+Public Sub CreateEMICalculator()
+
+    Dim ws As Worksheet
+    Dim btn As Button
+    Dim i As Long
+
+    Application.ScreenUpdating = False
+
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets("EMI Calculator")
+    On Error GoTo 0
+
+    If ws Is Nothing Then
+        Set ws = ThisWorkbook.Worksheets.Add
+        ws.Name = "EMI Calculator"
+    End If
+
+    With ws
+        .Cells.UnMerge
+        .Cells.Clear
+
+        For i = .Shapes.Count To 1 Step -1
+            .Shapes(i).Delete
+        Next i
+
+        .Range("A1:I1").Merge
+        .Range("A1").Value = "EMI Calculator with Full Payment Schedule"
+        .Range("A1").Font.Size = 18
+        .Range("A1").Font.Bold = True
+        .Range("A1").HorizontalAlignment = xlCenter
+
+        .Range("A3:B3").Merge
+        .Range("A3").Value = "Loan Inputs"
+        .Range("A3").Font.Bold = True
+
+        .Range("A4").Value = "Loan Amount"
+        .Range("A5").Value = "Annual Interest Rate (%)"
+        .Range("A6").Value = "Tenure (Months)"
+        .Range("A7").Value = "First Payment Date"
+
+        .Range("B4").Value = 500000
+        .Range("B5").Value = 10.5
+        .Range("B6").Value = 60
+        .Range("B7").Value = Date
+
+        .Range("A10").Value = "Monthly Interest Rate"
+        .Range("A11").Value = "EMI"
+        .Range("A12").Value = "Total Payment"
+        .Range("A13").Value = "Total Interest"
+        .Range("A14").Value = "Final Payment Date"
+        .Range("A15").Value = "Total Principal Paid"
+
+        .Range("B10").Formula = "=B5/100/12"
+        .Range("B11").Formula = "=IFERROR(ROUND(PMT(B10,B6,-B4),2),"""")"
+        .Range("B12").Formula = "=IFERROR(B11*B6,"""")"
+        .Range("B13").Formula = "=IFERROR(B12-B4,"""")"
+        .Range("B14").Formula = "=IFERROR(EDATE(B7,B6-1),"""")"
+
+        .Range("A17:I17").Value = Array( _
+            "Month No.", "Payment Date", "Opening Balance", "EMI", _
+            "Interest", "Principal", "Closing Balance", _
+            "Cumulative Interest", "Cumulative Principal")
+
+        .Range("A18").Value = "Click Generate Schedule to create the full EMI payment schedule."
+
+        Set btn = .Buttons.Add(.Range("D4").Left, .Range("D4").Top, 150, 30)
+        btn.Caption = "Generate Schedule"
+        btn.OnAction = "GenerateEMISchedule"
+
+        Set btn = .Buttons.Add(.Range("D6").Left, .Range("D6").Top, 150, 30)
+        btn.Caption = "Clear Schedule"
+        btn.OnAction = "ClearEMISchedule"
+
+        .Range("A4:A7,A10:A15").Font.Bold = True
+        .Range("B4:B7").Interior.Color = RGB(255, 242, 204)
+
+        .Range("A17:I17").Font.Bold = True
+        .Range("A17:I17").Interior.Color = RGB(31, 78, 121)
+        .Range("A17:I17").Font.Color = vbWhite
+
+        .Range("B4").NumberFormat = "#,##0.00"
+        .Range("B5").NumberFormat = "0.00"
+        .Range("B6").NumberFormat = "0"
+        .Range("B7,B14").NumberFormat = "dd-mmm-yyyy"
+        .Range("B10").NumberFormat = "0.00%"
+        .Range("B11:B13,B15").NumberFormat = "#,##0.00"
+
+        .Range("A4:B7,A10:B15,A17:I17").Borders.LineStyle = xlContinuous
+
+        .Columns("A").ColumnWidth = 22
+        .Columns("B").ColumnWidth = 18
+        .Columns("C:I").ColumnWidth = 18
+    End With
+
+    Application.ScreenUpdating = True
+
+    MsgBox "EMI Calculator created successfully.", vbInformation
+
+End Sub
+
+
+Public Sub GenerateEMISchedule()
+
+    Dim ws As Worksheet
+    Dim loanAmount As Double
+    Dim annualRate As Double
+    Dim tenure As Long
+    Dim firstRow As Long
+    Dim lastRow As Long
+    Dim oldLastRow As Long
+    Dim tbl As ListObject
+
+    Set ws = ThisWorkbook.Worksheets("EMI Calculator")
+
+    loanAmount = ws.Range("B4").Value
+    annualRate = ws.Range("B5").Value
+    tenure = ws.Range("B6").Value
+
+    If loanAmount <= 0 Then
+        MsgBox "Please enter a valid Loan Amount.", vbExclamation
+        Exit Sub
+    End If
+
+    If annualRate < 0 Then
+        MsgBox "Please enter a valid Annual Interest Rate.", vbExclamation
+        Exit Sub
+    End If
+
+    If tenure <= 0 Then
+        MsgBox "Please enter a valid Tenure in months.", vbExclamation
+        Exit Sub
+    End If
+
+    If Not IsDate(ws.Range("B7").Value) Then
+        MsgBox "Please enter a valid First Payment Date.", vbExclamation
+        Exit Sub
+    End If
+
+    Application.ScreenUpdating = False
+
+    On Error Resume Next
+    Set tbl = ws.ListObjects("EMISchedule")
+    If Not tbl Is Nothing Then tbl.Unlist
+    On Error GoTo 0
+
+    oldLastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+
+    If oldLastRow >= 18 Then
+        ws.Range("A18:I" & oldLastRow).Clear
+    End If
+
+    firstRow = 18
+    lastRow = firstRow + tenure - 1
+
+    With ws
+        .Range("A" & firstRow & ":A" & lastRow).FormulaR1C1 = "=ROW()-17"
+        .Range("B" & firstRow & ":B" & lastRow).FormulaR1C1 = "=EDATE(R7C2,RC[-1]-1)"
+        .Range("C" & firstRow & ":C" & lastRow).FormulaR1C1 = "=IF(RC[-2]=1,R4C2,R[-1]C[4])"
+        .Range("E" & firstRow & ":E" & lastRow).FormulaR1C1 = "=ROUND(RC[-2]*R10C2,2)"
+        .Range("D" & firstRow & ":D" & lastRow).FormulaR1C1 = "=IF(RC[-3]=R6C2,RC[-1]+RC[1],R11C2)"
+        .Range("F" & firstRow & ":F" & lastRow).FormulaR1C1 = "=MIN(RC[-2]-RC[-1],RC[-3])"
+        .Range("G" & firstRow & ":G" & lastRow).FormulaR1C1 = "=MAX(RC[-4]-RC[-1],0)"
+        .Range("H" & firstRow & ":H" & lastRow).FormulaR1C1 = "=SUM(R18C5:RC[-3])"
+        .Range("I" & firstRow & ":I" & lastRow).FormulaR1C1 = "=SUM(R18C6:RC[-3])"
+
+        .Range("B" & firstRow & ":B" & lastRow).NumberFormat = "dd-mmm-yyyy"
+        .Range("C" & firstRow & ":I" & lastRow).NumberFormat = "#,##0.00"
+        .Range("A" & firstRow & ":I" & lastRow).Borders.LineStyle = xlContinuous
+
+        .Range("B12").Formula = "=IFERROR(SUM(D18:D" & lastRow & "),"""")"
+        .Range("B13").Formula = "=IFERROR(SUM(E18:E" & lastRow & "),"""")"
+        .Range("B14").Formula = "=IFERROR(B" & lastRow & ","""")"
+        .Range("B15").Formula = "=IFERROR(SUM(F18:F" & lastRow & "),"""")"
+
+        Set tbl = .ListObjects.Add(xlSrcRange, .Range("A17:I" & lastRow), , xlYes)
+        tbl.Name = "EMISchedule"
+        tbl.TableStyle = "TableStyleMedium2"
+    End With
+
+    Application.ScreenUpdating = True
+
+    MsgBox "Full EMI payment schedule generated successfully.", vbInformation
+
+End Sub
+
+
+Public Sub ClearEMISchedule()
+
+    Dim ws As Worksheet
+    Dim tbl As ListObject
+    Dim lastRow As Long
+
+    Set ws = ThisWorkbook.Worksheets("EMI Calculator")
+
+    Application.ScreenUpdating = False
+
+    On Error Resume Next
+    Set tbl = ws.ListObjects("EMISchedule")
+    If Not tbl Is Nothing Then tbl.Unlist
+    On Error GoTo 0
+
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+
+    If lastRow >= 18 Then
+        ws.Range("A18:I" & lastRow).Clear
+    End If
+
+    ws.Range("A18").Value = "Click Generate Schedule to create the full EMI payment schedule."
+
+    ws.Range("B12").Formula = "=IFERROR(B11*B6,"""")"
+    ws.Range("B13").Formula = "=IFERROR(B12-B4,"""")"
+    ws.Range("B14").Formula = "=IFERROR(EDATE(B7,B6-1),"""")"
+    ws.Range("B15").ClearContents
+
+    Application.ScreenUpdating = True
+
+    MsgBox "EMI schedule cleared.", vbInformation
+
+End Sub
+
