@@ -24,7 +24,7 @@ Ecommerce_Sales_Data.xlsx
 
 ---
 
-## ☑️ Prompt 1: Create the Base Executive Presentation
+## 🔴 Prompt 1: Create the Base Executive Presentation
 
 ```text
 Create an executive presentation from the attached Ecommerce_Sales_Data.xlsx.
@@ -71,7 +71,7 @@ Use dark styling for the title and closing slides, and light styling for content
 
 ---
 
-## ☑️ Prompt 2: Add Section Divider Slide
+## 🔴 Prompt 2: Add Section Divider Slide
 
 ```text
 Insert a dark navy section-divider slide after the Executive Snapshot slide.
@@ -86,7 +86,7 @@ This slide should act as a visual pause before the analytical slides.
 
 ---
 
-## ☑️ Prompt 3: Improve Executive Snapshot with Sparklines
+## 🔴 Prompt 3: Improve Executive Snapshot with Sparklines
 
 ```text
 Upgrade the Executive Snapshot slide.
@@ -100,7 +100,7 @@ Keep the layout clean and leadership-ready.
 
 ---
 
-## ☑️ Prompt 4: Add Chart Callout Annotations
+## 🔴 Prompt 4: Add Chart Callout Annotations
 
 ```text
 Add visual callout annotations to the main chart slides.
@@ -120,7 +120,7 @@ Keep annotations clean and not cluttered.
 
 ---
 
-## ☑️ Prompt 5: Add Risk–Opportunity Heat Map
+## 🔴 Prompt 5: Add Risk–Opportunity Heat Map
 
 ```text
 Add a new slide after the Payment Methods slide and before Recommendations.
@@ -143,7 +143,7 @@ Do not invent values.
 
 ---
 
-## ☑️ Prompt 6: Redesign Recommendations as Effort–Impact Matrix
+## 🔴 Prompt 6: Redesign Recommendations as Effort–Impact Matrix
 
 ```text
 Redesign the Recommendations slide as a 2 × 2 Effort vs Impact quadrant.
@@ -161,10 +161,10 @@ Keep the slide executive-ready and visually clean.
 
 ---
 
-## ☑️ Prompt 7: Speaker Notes, Transitions and Animation Inclusion
+## 🔴 Prompt 7: Speaker Notes, Transitions and Animation Inclusion
 
 ```text
-Please add speaker notes and suitable transition and animations to all slides.
+Please add speaker notes and suitable transitions and animations to all slides.
 ```
 
 ---
