@@ -4,7 +4,8 @@ Mermaid lets you **draw diagrams from text**. That makes it perfect to co-create
 
 Important Links:
 
-* **Mermaid Official Site, Diagramming and Charting Tool Link:** <https://mermaid.js.org/>
+* **Mermaid Official Site, Diagramming and Charting Tool Link:** <https://www.mermaideditor.io/>
+* **Mermaid Tutorials Link:** <https://mermaid.js.org/ecosystem/tutorials.html>
 * **Diagram Generation and Creation Portal Link:** <https://app.diagrams.net/>
 
 Below you’ll get:
