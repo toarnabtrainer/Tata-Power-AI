@@ -12,7 +12,7 @@
 2. ✅ Copy all the generated formulas and paste them in the respective columns from N2 to S2, and drag them for rest of the column values. <br>
 3. ✅ Give the column heads appropriately e.g. Total, Maximum, Minimum, Average, Second Highest, Second Lowest. <br>
 4. ✅ At cell T1 give a column head 'Status'
-* 🔴 **Prompt -** `Write one excel formula such that if N2 cell values is below 4000 then "Low Sale", if it is between 4000 to 5000 then "Medium Sale" otherwise "High Sale".` <br>
+* 🔴 **Prompt -** `Write one excel formula such that if N2 cell value is below 4000 then "Low Sale", if it is between 4000 to 5000 then "Medium Sale" otherwise "High Sale".` <br>
 5. ✅ Now copy the formula and paste it to the cell T2 and drag it for rest of the column values. These limit values may have to be readjusted depending upon your generate data values.
 * 🔴 **Prompt -** `Please write the steps to convert dataset at A1 to T21 to a table.` <br>
 6. ✅ Follow the steps given to do the needful actions to convert the dataset to a table.
@@ -53,7 +53,6 @@
 ## ✴️ **Exercise - 4**
 * 🔴 **Prompt -** `Create an Excel Macro to make an 'EMI Calculator' along with full payment schedule and calculations.` <br>
 1. ✅ Follow all the steps as mentioned in the instruction list and do the needful.
-2. ✅ "Save as" the .xlsx file with .xlsm extension to save the macro code in the file.
 ## ☑️ **Output:**
 ![image](https://github.com/user-attachments/assets/04927239-0885-4dee-9fea-2a99908c5440)
 
