@@ -1,0 +1,2410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Interactive sales performance dashboard generated locally from a JSON file." />
+  <title>Interactive Sales Performance Dashboard</title>
+  <script src="https://cdn.plot.ly/plotly-3.7.0.min.js" charset="utf-8"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f4f7fb;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --ink: #132238;
+      --muted: #64748b;
+      --line: #dfe7f1;
+      --line-strong: #cbd5e1;
+      --navy: #0f2747;
+      --navy-2: #17375e;
+      --accent: #2563eb;
+      --accent-soft: #eaf1ff;
+      --positive: #059669;
+      --positive-soft: #e8f8f1;
+      --negative: #dc2626;
+      --negative-soft: #fef0f0;
+      --warning: #d97706;
+      --warning-soft: #fff6e7;
+      --purple: #7c3aed;
+      --shadow: 0 12px 30px rgba(15, 39, 71, 0.08);
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--page);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    button, input, select { font: inherit; }
+
+    button { cursor: pointer; }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 3px solid rgba(37, 99, 235, 0.28);
+      outline-offset: 2px;
+    }
+
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      min-height: 76px;
+      padding: 14px 24px;
+      color: #ffffff;
+      background: linear-gradient(120deg, var(--navy), var(--navy-2));
+      box-shadow: 0 8px 24px rgba(15, 39, 71, 0.20);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      flex: 0 0 44px;
+      width: 44px;
+      height: 44px;
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      font-size: 23px;
+    }
+
+    .brand-copy { min-width: 0; }
+
+    .brand-copy h1 {
+      margin: 0;
+      font-size: clamp(18px, 2vw, 25px);
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-copy p {
+      margin: 4px 0 0;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      max-width: 300px;
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.20);
+      color: rgba(255, 255, 255, 0.90);
+      font-size: 12px;
+    }
+
+    .status-dot {
+      flex: 0 0 8px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #94a3b8;
+      box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.18);
+    }
+
+    .status-dot.ready {
+      background: #34d399;
+      box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.20);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 9px 13px;
+      border-radius: 9px;
+      border: 1px solid transparent;
+      font-weight: 700;
+      font-size: 13px;
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+
+    .btn:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn:disabled { cursor: not-allowed; opacity: 0.5; }
+
+    .btn-primary {
+      color: #ffffff;
+      background: var(--accent);
+      box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+    }
+
+    .btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+
+    .btn-secondary {
+      color: var(--ink);
+      background: #ffffff;
+      border-color: var(--line-strong);
+    }
+
+    .btn-secondary:hover:not(:disabled) { background: var(--surface-soft); }
+
+    .btn-header {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.13);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .btn-header:hover:not(:disabled) { background: rgba(255, 255, 255, 0.20); }
+
+    .btn-danger-soft {
+      color: var(--negative);
+      background: var(--negative-soft);
+      border-color: #fecaca;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: minmax(250px, 292px) minmax(0, 1fr);
+      gap: 20px;
+      width: min(1800px, 100%);
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .panel,
+    .chart-card,
+    .kpi-card,
+    .welcome-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .panel { padding: 16px; }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .panel-header h2,
+    .panel-header h3 {
+      margin: 0;
+      font-size: 14px;
+      letter-spacing: -0.01em;
+    }
+
+    .mini-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 23px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: var(--accent);
+      background: var(--accent-soft);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .drop-zone {
+      display: grid;
+      place-items: center;
+      gap: 8px;
+      min-height: 168px;
+      padding: 20px 14px;
+      border: 2px dashed #b9c6d8;
+      border-radius: 13px;
+      color: var(--muted);
+      background: linear-gradient(180deg, #fbfdff, #f7faff);
+      text-align: center;
+      transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+    }
+
+    .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      transform: scale(1.01);
+    }
+
+    .drop-icon {
+      display: grid;
+      place-items: center;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      color: var(--accent);
+      background: var(--accent-soft);
+      font-size: 24px;
+    }
+
+    .drop-zone strong { color: var(--ink); font-size: 14px; }
+    .drop-zone small { font-size: 11px; }
+
+    .upload-actions {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      margin-top: 4px;
+    }
+
+    .upload-actions .btn { flex: 1 1 0; }
+
+    .privacy-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 11px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .field label {
+      color: #475569;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      min-width: 0;
+      height: 38px;
+      padding: 7px 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      color: var(--ink);
+      background: #ffffff;
+    }
+
+    .field input:disabled,
+    .field select:disabled {
+      color: #94a3b8;
+      background: #f1f5f9;
+    }
+
+    .date-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .filter-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .filter-summary {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .quality-list {
+      display: grid;
+      gap: 9px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .quality-item {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #eef2f7;
+      font-size: 11px;
+    }
+
+    .quality-item:last-child { padding-bottom: 0; border-bottom: 0; }
+    .quality-item span:first-child { color: var(--muted); }
+    .quality-item strong { max-width: 58%; text-align: right; overflow-wrap: anywhere; }
+
+    .dashboard {
+      min-width: 0;
+    }
+
+    .welcome-card {
+      display: grid;
+      place-items: center;
+      min-height: calc(100vh - 136px);
+      padding: 40px 24px;
+      text-align: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .welcome-card::before,
+    .welcome-card::after {
+      content: "";
+      position: absolute;
+      width: 340px;
+      height: 340px;
+      border-radius: 50%;
+      filter: blur(4px);
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
+    .welcome-card::before {
+      top: -180px;
+      right: -90px;
+      background: radial-gradient(circle, rgba(37, 99, 235, 0.20), transparent 68%);
+    }
+
+    .welcome-card::after {
+      bottom: -190px;
+      left: -100px;
+      background: radial-gradient(circle, rgba(124, 58, 237, 0.16), transparent 68%);
+    }
+
+    .welcome-content { position: relative; z-index: 1; max-width: 720px; }
+
+    .welcome-icon {
+      display: grid;
+      place-items: center;
+      width: 76px;
+      height: 76px;
+      margin: 0 auto 18px;
+      border-radius: 24px;
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      box-shadow: 0 18px 40px rgba(37, 99, 235, 0.25);
+      font-size: 38px;
+    }
+
+    .welcome-content h2 {
+      margin: 0;
+      font-size: clamp(25px, 3.4vw, 42px);
+      line-height: 1.13;
+      letter-spacing: -0.035em;
+    }
+
+    .welcome-content p {
+      max-width: 620px;
+      margin: 15px auto 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .feature-pills {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin: 22px 0;
+    }
+
+    .feature-pill {
+      padding: 7px 10px;
+      border-radius: 999px;
+      color: #334155;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .dashboard-content { display: none; }
+    .dashboard-content.visible { display: block; }
+
+    .dashboard-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 13px 15px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.84);
+      backdrop-filter: blur(8px);
+    }
+
+    .dataset-title { min-width: 0; }
+
+    .dataset-title h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dataset-title p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex-wrap: wrap;
+    }
+
+    .currency-control {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .currency-control select {
+      height: 36px;
+      padding: 6px 8px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .kpi-card {
+      position: relative;
+      min-width: 0;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .kpi-card::after {
+      content: "";
+      position: absolute;
+      top: -30px;
+      right: -30px;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: var(--kpi-soft, var(--accent-soft));
+      opacity: 0.82;
+    }
+
+    .kpi-top {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.025em;
+      text-transform: uppercase;
+    }
+
+    .kpi-icon {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      color: var(--kpi-color, var(--accent));
+      background: var(--kpi-soft, var(--accent-soft));
+      font-size: 15px;
+    }
+
+    .kpi-value {
+      position: relative;
+      z-index: 1;
+      margin-top: 12px;
+      font-size: clamp(21px, 2.5vw, 31px);
+      line-height: 1.05;
+      font-weight: 850;
+      letter-spacing: -0.035em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .kpi-note {
+      position: relative;
+      z-index: 1;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .kpi-card.positive .kpi-value { color: var(--positive); }
+    .kpi-card.negative .kpi-value { color: var(--negative); }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .chart-card {
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .chart-card.full-width { grid-column: 1 / -1; }
+
+    .chart-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 72px;
+      padding: 15px 16px 8px;
+    }
+
+    .chart-copy { min-width: 0; }
+
+    .chart-copy h3 {
+      margin: 0;
+      font-size: 15px;
+      letter-spacing: -0.015em;
+    }
+
+    .chart-copy p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .chart-controls {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .chart-controls select {
+      max-width: 150px;
+      height: 32px;
+      padding: 5px 7px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      color: var(--ink);
+      background: #ffffff;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .chart {
+      width: 100%;
+      min-height: 385px;
+    }
+
+    .chart.tall { min-height: 455px; }
+
+    .chart-note {
+      display: none;
+      margin: 0 16px 13px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      color: #92400e;
+      background: var(--warning-soft);
+      border: 1px solid #fcd34d;
+      font-size: 10px;
+    }
+
+    .chart-note.visible { display: block; }
+
+    .selection-panel {
+      display: none;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 0 16px 16px;
+      padding: 12px;
+      border-radius: 10px;
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+    }
+
+    .selection-panel.visible { display: grid; }
+
+    .selection-item { min-width: 0; }
+    .selection-item span { display: block; color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; }
+    .selection-item strong { display: block; margin-top: 3px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .footer-note {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 14px;
+      padding: 11px 2px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .toast-container {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 100;
+      display: grid;
+      gap: 10px;
+      width: min(390px, calc(100vw - 36px));
+      pointer-events: none;
+    }
+
+    .toast {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 11px;
+      color: var(--ink);
+      background: #ffffff;
+      border: 1px solid var(--line);
+      box-shadow: 0 16px 42px rgba(15, 39, 71, 0.18);
+      animation: toast-in 180ms ease-out;
+      pointer-events: auto;
+    }
+
+    .toast.error { border-color: #fecaca; }
+    .toast.success { border-color: #a7f3d0; }
+    .toast strong { display: block; font-size: 12px; }
+    .toast p { margin: 2px 0 0; color: var(--muted); font-size: 10px; }
+
+    @keyframes toast-in {
+      from { transform: translateY(8px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 1250px) {
+      .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .kpi-card:nth-child(4), .kpi-card:nth-child(5) { grid-column: span 1; }
+    }
+
+    @media (max-width: 1020px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+      .sidebar .panel:first-child { grid-row: span 2; }
+      .welcome-card { min-height: 520px; }
+    }
+
+    @media (max-width: 760px) {
+      .app-header { position: static; align-items: flex-start; padding: 14px 16px; }
+      .header-badge { display: none; }
+      .header-actions .btn { padding-inline: 10px; }
+      .app-shell { padding: 12px; gap: 12px; }
+      .sidebar { grid-template-columns: 1fr; }
+      .sidebar .panel:first-child { grid-row: auto; }
+      .dashboard-toolbar { align-items: flex-start; flex-direction: column; }
+      .toolbar-right { width: 100%; justify-content: space-between; }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .kpi-grid .kpi-card:first-child { grid-column: 1 / -1; }
+      .charts-grid { grid-template-columns: 1fr; }
+      .chart-card.full-width { grid-column: auto; }
+      .chart-card-header { flex-direction: column; min-height: auto; }
+      .chart-controls { width: 100%; justify-content: flex-start; }
+      .chart { min-height: 350px; }
+      .selection-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .footer-note { flex-direction: column; align-items: flex-start; }
+    }
+
+    @media (max-width: 470px) {
+      .brand-copy p { display: none; }
+      .header-actions .btn span { display: none; }
+      .kpi-grid { grid-template-columns: 1fr; }
+      .kpi-grid .kpi-card:first-child { grid-column: auto; }
+      .date-grid, .filter-actions { grid-template-columns: 1fr; }
+      .selection-panel { grid-template-columns: 1fr; }
+      .chart { min-height: 320px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">▥</div>
+      <div class="brand-copy">
+        <h1>Sales Performance Dashboard</h1>
+        <p>Local JSON analysis · Interactive Plotly visualizations</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="header-badge" aria-live="polite">
+        <span id="headerStatusDot" class="status-dot"></span>
+        <span id="headerStatusText">No dataset loaded</span>
+      </div>
+      <button id="headerUploadButton" class="btn btn-header" type="button" aria-label="Choose a JSON sales file">
+        ↑ <span>Upload JSON</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <aside class="sidebar" aria-label="Data upload and dashboard filters">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Sales data</h2>
+          <span class="mini-badge">JSON</span>
+        </div>
+
+        <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="Drop a JSON file here or choose a file">
+          <div class="drop-icon" aria-hidden="true">⇧</div>
+          <strong>Drop your sales JSON here</strong>
+          <small>Expected: an array of transaction line items</small>
+          <div class="upload-actions">
+            <button id="chooseFileButton" class="btn btn-primary" type="button">Choose file</button>
+            <button id="sampleButton" class="btn btn-secondary" type="button">Use sample</button>
+          </div>
+        </div>
+        <input id="fileInput" class="sr-only" type="file" accept=".json,application/json" />
+
+        <p class="privacy-note">
+          <span aria-hidden="true">🔒</span>
+          <span>Your JSON is parsed only in this browser. The dashboard does not upload the file to a server.</span>
+        </p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Global filters</h2>
+          <span id="activeFilterBadge" class="mini-badge">0 active</span>
+        </div>
+
+        <div class="field-grid">
+          <div class="date-grid">
+            <div class="field">
+              <label for="startDate">From</label>
+              <input id="startDate" type="date" disabled />
+            </div>
+            <div class="field">
+              <label for="endDate">To</label>
+              <input id="endDate" type="date" disabled />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="regionFilter">Region</label>
+            <select id="regionFilter" disabled><option value="">All regions</option></select>
+          </div>
+
+          <div class="field">
+            <label for="stateFilter">State</label>
+            <select id="stateFilter" disabled><option value="">All states</option></select>
+          </div>
+
+          <div class="field">
+            <label for="segmentFilter">Customer segment</label>
+            <select id="segmentFilter" disabled><option value="">All segments</option></select>
+          </div>
+
+          <div class="field">
+            <label for="categoryFilter">Category</label>
+            <select id="categoryFilter" disabled><option value="">All categories</option></select>
+          </div>
+
+          <div class="field">
+            <label for="subCategoryFilter">Sub-category</label>
+            <select id="subCategoryFilter" disabled><option value="">All sub-categories</option></select>
+          </div>
+
+          <div class="field">
+            <label for="shipModeFilter">Ship mode</label>
+            <select id="shipModeFilter" disabled><option value="">All ship modes</option></select>
+          </div>
+
+          <div class="field">
+            <label for="profitabilityFilter">Profitability</label>
+            <select id="profitabilityFilter" disabled>
+              <option value="">All transactions</option>
+              <option value="profit">Profitable only</option>
+              <option value="loss">Loss / break-even only</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="productSearch">Product search</label>
+            <input id="productSearch" type="search" placeholder="Product name or ID" disabled />
+          </div>
+        </div>
+
+        <div class="filter-actions">
+          <button id="applyFiltersButton" class="btn btn-primary" type="button" disabled>Apply</button>
+          <button id="resetFiltersButton" class="btn btn-secondary" type="button" disabled>Reset</button>
+        </div>
+        <p id="filterSummary" class="filter-summary">Load a dataset to activate filters.</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Data quality</h2>
+          <span id="qualityBadge" class="mini-badge">Waiting</span>
+        </div>
+        <ul id="qualityList" class="quality-list">
+          <li class="quality-item"><span>Status</span><strong>No file loaded</strong></li>
+        </ul>
+      </section>
+    </aside>
+
+    <section class="dashboard" aria-label="Sales dashboard">
+      <section id="welcomeCard" class="welcome-card">
+        <div class="welcome-content">
+          <div class="welcome-icon" aria-hidden="true">↗</div>
+          <h2>Turn your local sales JSON into an interactive dashboard</h2>
+          <p>
+            Upload a file containing sales transaction records. The page will validate the fields, apply interactive filters,
+            and generate KPI scorecards, a time trend, product performance, a geographic map, and a discount-profitability analysis.
+          </p>
+          <div class="feature-pills" aria-label="Dashboard features">
+            <span class="feature-pill">Distinct order counting</span>
+            <span class="feature-pill">Date-range filtering</span>
+            <span class="feature-pill">Cross-filter chart clicks</span>
+            <span class="feature-pill">Responsive Plotly charts</span>
+            <span class="feature-pill">CSV export</span>
+          </div>
+          <button id="welcomeUploadButton" class="btn btn-primary" type="button">Choose JSON file</button>
+        </div>
+      </section>
+
+      <section id="dashboardContent" class="dashboard-content">
+        <div class="dashboard-toolbar">
+          <div class="dataset-title">
+            <h2 id="datasetName">Sales dataset</h2>
+            <p id="datasetMeta">0 valid rows</p>
+          </div>
+          <div class="toolbar-right">
+            <label class="currency-control" for="currencySelect">
+              Currency
+              <select id="currencySelect" aria-label="Currency used to format dashboard values">
+                <option value="USD" selected>USD ($)</option>
+                <option value="INR">INR (₹)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+                <option value="CAD">CAD (C$)</option>
+                <option value="AUD">AUD (A$)</option>
+              </select>
+            </label>
+            <button id="exportButton" class="btn btn-secondary" type="button">↓ Export filtered CSV</button>
+          </div>
+        </div>
+
+        <section class="kpi-grid" aria-label="Executive KPI scorecards">
+          <article class="kpi-card" style="--kpi-color:#2563eb;--kpi-soft:#eaf1ff;">
+            <div class="kpi-top"><span>Total sales</span><span class="kpi-icon" aria-hidden="true">$</span></div>
+            <div id="kpiSales" class="kpi-value">—</div>
+            <div id="kpiSalesNote" class="kpi-note">Across the current filter selection</div>
+          </article>
+          <article id="profitKpiCard" class="kpi-card" style="--kpi-color:#059669;--kpi-soft:#e8f8f1;">
+            <div class="kpi-top"><span>Total profit</span><span class="kpi-icon" aria-hidden="true">↗</span></div>
+            <div id="kpiProfit" class="kpi-value">—</div>
+            <div id="kpiProfitNote" class="kpi-note">Net of profitable and loss rows</div>
+          </article>
+          <article id="marginKpiCard" class="kpi-card" style="--kpi-color:#7c3aed;--kpi-soft:#f2ecff;">
+            <div class="kpi-top"><span>Profit margin</span><span class="kpi-icon" aria-hidden="true">%</span></div>
+            <div id="kpiMargin" class="kpi-value">—</div>
+            <div id="kpiMarginNote" class="kpi-note">Profit ÷ sales</div>
+          </article>
+          <article class="kpi-card" style="--kpi-color:#d97706;--kpi-soft:#fff6e7;">
+            <div class="kpi-top"><span>Distinct orders</span><span class="kpi-icon" aria-hidden="true">#</span></div>
+            <div id="kpiOrders" class="kpi-value">—</div>
+            <div id="kpiOrdersNote" class="kpi-note">Order IDs counted once</div>
+          </article>
+          <article class="kpi-card" style="--kpi-color:#0f766e;--kpi-soft:#e7f8f6;">
+            <div class="kpi-top"><span>Units sold</span><span class="kpi-icon" aria-hidden="true">▦</span></div>
+            <div id="kpiUnits" class="kpi-value">—</div>
+            <div id="kpiUnitsNote" class="kpi-note">Sum of quantity</div>
+          </article>
+        </section>
+
+        <section class="charts-grid">
+          <article class="chart-card full-width">
+            <div class="chart-card-header">
+              <div class="chart-copy">
+                <h3>Sales and profit trend</h3>
+                <p>Identify growth, seasonality, and periods where revenue and profitability diverge. Click a period to filter.</p>
+              </div>
+              <div class="chart-controls">
+                <label class="sr-only" for="trendGranularity">Trend granularity</label>
+                <select id="trendGranularity">
+                  <option value="month" selected>Monthly</option>
+                  <option value="quarter">Quarterly</option>
+                  <option value="year">Yearly</option>
+                </select>
+              </div>
+            </div>
+            <div id="trendChart" class="chart" role="img" aria-label="Sales and profit trend chart"></div>
+          </article>
+
+          <article class="chart-card">
+            <div class="chart-card-header">
+              <div class="chart-copy">
+                <h3>Product hierarchy performance</h3>
+                <p>Compare sales and profit; click a bar to cross-filter the dashboard.</p>
+              </div>
+              <div class="chart-controls">
+                <label class="sr-only" for="categoryLevel">Product hierarchy level</label>
+                <select id="categoryLevel">
+                  <option value="category" selected>Category</option>
+                  <option value="subCategory">Sub-category</option>
+                  <option value="productName">Product</option>
+                </select>
+                <label class="sr-only" for="categoryTopN">Number of product groups</label>
+                <select id="categoryTopN">
+                  <option value="10" selected>Top 10</option>
+                  <option value="15">Top 15</option>
+                  <option value="20">Top 20</option>
+                </select>
+              </div>
+            </div>
+            <div id="categoryChart" class="chart tall" role="img" aria-label="Category and sub-category sales and profit chart"></div>
+          </article>
+
+          <article class="chart-card">
+            <div class="chart-card-header">
+              <div class="chart-copy">
+                <h3>Geographic performance</h3>
+                <p>View performance by U.S. state; non-U.S. datasets automatically use a regional ranking.</p>
+              </div>
+              <div class="chart-controls">
+                <label class="sr-only" for="mapMetric">Geographic metric</label>
+                <select id="mapMetric">
+                  <option value="sales" selected>Sales</option>
+                  <option value="profit">Profit</option>
+                  <option value="margin">Profit margin</option>
+                  <option value="orders">Orders</option>
+                </select>
+              </div>
+            </div>
+            <div id="mapChart" class="chart tall" role="img" aria-label="Geographic sales performance map"></div>
+            <p id="mapNote" class="chart-note"></p>
+          </article>
+
+          <article class="chart-card full-width">
+            <div class="chart-card-header">
+              <div class="chart-copy">
+                <h3>Discount versus profitability</h3>
+                <p>Find high-discount loss makers and unusual transactions. Bubble size represents sales; click a point for details.</p>
+              </div>
+              <div class="chart-controls">
+                <label class="sr-only" for="scatterMetric">Scatter chart profitability metric</label>
+                <select id="scatterMetric">
+                  <option value="margin" selected>Profit margin</option>
+                  <option value="profit">Profit</option>
+                </select>
+              </div>
+            </div>
+            <div id="scatterChart" class="chart tall" role="img" aria-label="Discount versus profitability scatter plot"></div>
+            <p id="scatterNote" class="chart-note"></p>
+            <div id="selectionPanel" class="selection-panel" aria-live="polite">
+              <div class="selection-item"><span>Order</span><strong id="selectedOrder">—</strong></div>
+              <div class="selection-item"><span>Product</span><strong id="selectedProduct">—</strong></div>
+              <div class="selection-item"><span>Sales / Profit</span><strong id="selectedFinancials">—</strong></div>
+              <div class="selection-item"><span>Location</span><strong id="selectedLocation">—</strong></div>
+            </div>
+          </article>
+        </section>
+
+        <div class="footer-note">
+          <span>All KPI and aggregated charts use the full filtered dataset. Large scatter plots may be sampled for browser performance.</span>
+          <span>Plotly.js 3.7.0 · Latest stable release when generated</span>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+    "use strict";
+
+    const PLOTLY_VERSION = "3.7.0";
+    const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
+    const MAX_SCATTER_POINTS = 20000;
+
+    const COLORS = {
+      sales: "#2563eb",
+      profit: "#059669",
+      loss: "#dc2626",
+      margin: "#7c3aed",
+      orders: "#d97706",
+      units: "#0f766e",
+      grid: "#e8eef6",
+      text: "#334155",
+      muted: "#64748b",
+      zero: "#94a3b8"
+    };
+
+    const CATEGORY_COLORS = [
+      "#2563eb", "#7c3aed", "#059669", "#d97706", "#db2777", "#0891b2",
+      "#4f46e5", "#65a30d", "#ea580c", "#0f766e", "#9333ea", "#0284c7"
+    ];
+
+    const CURRENCY_SYMBOLS = {
+      USD: "$",
+      INR: "₹",
+      EUR: "€",
+      GBP: "£",
+      CAD: "C$",
+      AUD: "A$"
+    };
+
+    const STATE_NAME_TO_CODE = {
+      "Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA","Colorado":"CO",
+      "Connecticut":"CT","Delaware":"DE","District of Columbia":"DC","Florida":"FL","Georgia":"GA",
+      "Hawaii":"HI","Idaho":"ID","Illinois":"IL","Indiana":"IN","Iowa":"IA","Kansas":"KS",
+      "Kentucky":"KY","Louisiana":"LA","Maine":"ME","Maryland":"MD","Massachusetts":"MA","Michigan":"MI",
+      "Minnesota":"MN","Mississippi":"MS","Missouri":"MO","Montana":"MT","Nebraska":"NE","Nevada":"NV",
+      "New Hampshire":"NH","New Jersey":"NJ","New Mexico":"NM","New York":"NY","North Carolina":"NC",
+      "North Dakota":"ND","Ohio":"OH","Oklahoma":"OK","Oregon":"OR","Pennsylvania":"PA","Rhode Island":"RI",
+      "South Carolina":"SC","South Dakota":"SD","Tennessee":"TN","Texas":"TX","Utah":"UT","Vermont":"VT",
+      "Virginia":"VA","Washington":"WA","West Virginia":"WV","Wisconsin":"WI","Wyoming":"WY","Puerto Rico":"PR"
+    };
+    const STATE_CODE_TO_NAME = Object.fromEntries(Object.entries(STATE_NAME_TO_CODE).map(([name, code]) => [code, name]));
+
+    const FIELD_ALIASES = {
+      rowId: ["Row ID", "RowID", "row_id", "id"],
+      orderId: ["Order ID", "OrderID", "order_id", "Order Number", "Order No"],
+      orderDate: ["Order Date", "OrderDate", "order_date", "Date", "Transaction Date"],
+      shipDate: ["Ship Date", "ShipDate", "ship_date"],
+      shipMode: ["Ship Mode", "ShipMode", "ship_mode", "Shipping Mode"],
+      customerId: ["Customer ID", "CustomerID", "customer_id"],
+      customerName: ["Customer Name", "CustomerName", "customer_name", "Customer"],
+      segment: ["Segment", "Customer Segment", "customer_segment"],
+      country: ["Country", "country"],
+      city: ["City", "city"],
+      state: ["State", "Province", "state", "province"],
+      postalCode: ["Postal Code", "PostalCode", "postal_code", "Zip", "ZIP Code"],
+      region: ["Region", "region", "Territory"],
+      productId: ["Product ID", "ProductID", "product_id", "SKU"],
+      category: ["Category", "category", "Product Category"],
+      subCategory: ["Sub-Category", "Sub Category", "SubCategory", "sub_category"],
+      productName: ["Product Name", "ProductName", "product_name", "Product"],
+      sales: ["Sales", "Revenue", "sales", "revenue", "Amount"],
+      quantity: ["Quantity", "Qty", "quantity", "Units"],
+      discount: ["Discount", "discount", "Discount Rate", "Discount %"],
+      profit: ["Profit", "profit", "Net Profit"]
+    };
+
+    const SAMPLE_DATA = [
+      {
+        "Row ID": 1, "Order ID": "CA-2017-152156", "Order Date": "08-11-2017", "Ship Date": "11-11-2017",
+        "Ship Mode": "Second Class", "Customer ID": "CG-12520", "Customer Name": "Claire Gute", "Segment": "Consumer",
+        "Country": "United States", "City": "Henderson", "State": "Kentucky", "Postal Code": 42420, "Region": "South",
+        "Product ID": "FUR-BO-10001798", "Category": "Furniture", "Sub-Category": "Bookcases",
+        "Product Name": "Bush Somerset Collection Bookcase", "Sales": 261.96, "Quantity": 2, "Discount": 0, "Profit": 41.9136
+      },
+      {
+        "Row ID": 2, "Order ID": "CA-2017-152156", "Order Date": "08-11-2017", "Ship Date": "11-11-2017",
+        "Ship Mode": "Second Class", "Customer ID": "CG-12520", "Customer Name": "Claire Gute", "Segment": "Consumer",
+        "Country": "United States", "City": "Henderson", "State": "Kentucky", "Postal Code": 42420, "Region": "South",
+        "Product ID": "FUR-CH-10000454", "Category": "Furniture", "Sub-Category": "Chairs",
+        "Product Name": "Hon Deluxe Fabric Upholstered Stacking Chairs, Rounded Back", "Sales": 731.94, "Quantity": 3,
+        "Discount": 0, "Profit": 219.582
+      },
+      {
+        "Row ID": 3, "Order ID": "CA-2017-138688", "Order Date": "12-06-2017", "Ship Date": "16-06-2017",
+        "Ship Mode": "Second Class", "Customer ID": "DV-13045", "Customer Name": "Darrin Van Huff", "Segment": "Corporate",
+        "Country": "United States", "City": "Los Angeles", "State": "California", "Postal Code": 90036, "Region": "West",
+        "Product ID": "OFF-LA-10000240", "Category": "Office Supplies", "Sub-Category": "Labels",
+        "Product Name": "Self-Adhesive Address Labels for Typewriters by Universal", "Sales": 14.62, "Quantity": 2,
+        "Discount": 0, "Profit": 6.8714
+      },
+      {
+        "Row ID": 4, "Order ID": "US-2016-108966", "Order Date": "11-10-2016", "Ship Date": "18-10-2016",
+        "Ship Mode": "Standard Class", "Customer ID": "SO-20335", "Customer Name": "Sean O'Donnell", "Segment": "Consumer",
+        "Country": "United States", "City": "Fort Lauderdale", "State": "Florida", "Postal Code": 33311, "Region": "South",
+        "Product ID": "FUR-TA-10000577", "Category": "Furniture", "Sub-Category": "Tables",
+        "Product Name": "Bretford CR4500 Series Slim Rectangular Table", "Sales": 957.5775, "Quantity": 5,
+        "Discount": 0.45, "Profit": -383.031
+      }
+    ];
+
+    const state = {
+      rawData: [],
+      filteredData: [],
+      sourceName: "",
+      fieldMap: {},
+      invalidRows: 0,
+      dateOrder: "day-first",
+      warnings: [],
+      defaultDateRange: { start: "", end: "" }
+    };
+
+    const elements = {};
+
+    document.addEventListener("DOMContentLoaded", initialize);
+
+    function initialize() {
+      cacheElements();
+      bindEvents();
+
+      if (!window.Plotly) {
+        showToast("Plotly could not be loaded", "Check your internet connection and reopen the HTML file.", "error", 12000);
+        elements.headerStatusText.textContent = "Plotly CDN unavailable";
+        return;
+      }
+
+      renderEmptyCharts();
+    }
+
+    function cacheElements() {
+      const ids = [
+        "headerStatusDot", "headerStatusText", "headerUploadButton", "dropZone", "chooseFileButton", "sampleButton", "fileInput",
+        "startDate", "endDate", "regionFilter", "stateFilter", "segmentFilter", "categoryFilter", "subCategoryFilter",
+        "shipModeFilter", "profitabilityFilter", "productSearch", "applyFiltersButton", "resetFiltersButton", "activeFilterBadge",
+        "filterSummary", "qualityBadge", "qualityList", "welcomeCard", "welcomeUploadButton", "dashboardContent", "datasetName",
+        "datasetMeta", "currencySelect", "exportButton", "kpiSales", "kpiSalesNote", "kpiProfit", "kpiProfitNote", "kpiMargin",
+        "kpiMarginNote", "kpiOrders", "kpiOrdersNote", "kpiUnits", "kpiUnitsNote", "profitKpiCard", "marginKpiCard",
+        "trendGranularity", "categoryLevel", "categoryTopN", "mapMetric", "scatterMetric", "trendChart", "categoryChart",
+        "mapChart", "scatterChart", "mapNote", "scatterNote", "selectionPanel", "selectedOrder", "selectedProduct",
+        "selectedFinancials", "selectedLocation", "toastContainer"
+      ];
+      ids.forEach(id => { elements[id] = document.getElementById(id); });
+    }
+
+    function bindEvents() {
+      [elements.chooseFileButton, elements.headerUploadButton, elements.welcomeUploadButton].forEach(button => {
+        button.addEventListener("click", () => elements.fileInput.click());
+      });
+
+      elements.fileInput.addEventListener("change", event => {
+        const [file] = event.target.files || [];
+        if (file) handleFile(file);
+        event.target.value = "";
+      });
+
+      elements.sampleButton.addEventListener("click", () => loadDataset(SAMPLE_DATA, "Included Superstore sample"));
+
+      ["dragenter", "dragover"].forEach(eventName => {
+        elements.dropZone.addEventListener(eventName, event => {
+          event.preventDefault();
+          event.stopPropagation();
+          elements.dropZone.classList.add("drag-over");
+        });
+      });
+
+      ["dragleave", "drop"].forEach(eventName => {
+        elements.dropZone.addEventListener(eventName, event => {
+          event.preventDefault();
+          event.stopPropagation();
+          elements.dropZone.classList.remove("drag-over");
+        });
+      });
+
+      elements.dropZone.addEventListener("drop", event => {
+        const [file] = event.dataTransfer.files || [];
+        if (file) handleFile(file);
+      });
+
+      elements.dropZone.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          elements.fileInput.click();
+        }
+      });
+
+      elements.applyFiltersButton.addEventListener("click", applyFilters);
+      elements.resetFiltersButton.addEventListener("click", resetFilters);
+      elements.exportButton.addEventListener("click", exportFilteredCsv);
+
+      [
+        elements.startDate, elements.endDate, elements.regionFilter, elements.stateFilter, elements.segmentFilter,
+        elements.subCategoryFilter, elements.shipModeFilter, elements.profitabilityFilter
+      ].forEach(control => control.addEventListener("change", applyFilters));
+
+      elements.categoryFilter.addEventListener("change", () => {
+        populateSubCategoryFilter();
+        applyFilters();
+      });
+
+      let searchTimer;
+      elements.productSearch.addEventListener("input", () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(applyFilters, 220);
+      });
+
+      [elements.trendGranularity, elements.categoryLevel, elements.categoryTopN, elements.mapMetric, elements.scatterMetric]
+        .forEach(control => control.addEventListener("change", renderAllVisuals));
+
+      elements.currencySelect.addEventListener("change", renderAllVisuals);
+
+      window.addEventListener("resize", debounce(() => {
+        [elements.trendChart, elements.categoryChart, elements.mapChart, elements.scatterChart].forEach(chart => {
+          if (chart && chart.data) Plotly.Plots.resize(chart);
+        });
+      }, 120));
+    }
+
+    async function handleFile(file) {
+      try {
+        if (!file.name.toLowerCase().endsWith(".json") && file.type !== "application/json") {
+          throw new Error("Please choose a .json file.");
+        }
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+          throw new Error(`The file is ${(file.size / 1024 / 1024).toFixed(1)} MB. The browser limit for this dashboard is 100 MB.`);
+        }
+
+        setLoadingStatus(`Reading ${file.name}…`);
+        const text = await file.text();
+        let parsed;
+        try {
+          parsed = JSON.parse(text.replace(/^\uFEFF/, ""));
+        } catch (error) {
+          throw new Error(`Invalid JSON: ${error.message}`);
+        }
+
+        loadDataset(parsed, file.name);
+      } catch (error) {
+        setIdleStatus();
+        showToast("File could not be loaded", error.message || "Unknown error", "error", 10000);
+      }
+    }
+
+    function loadDataset(parsed, sourceName) {
+      try {
+        const records = unwrapRecords(parsed);
+        if (!records.length) throw new Error("The JSON contains no records.");
+        if (!records.every(record => record && typeof record === "object" && !Array.isArray(record))) {
+          throw new Error("The JSON records must be objects with named fields.");
+        }
+
+        const fieldMap = buildFieldMap(records);
+        const missingCore = ["orderId", "orderDate", "sales", "profit"].filter(field => !fieldMap[field]);
+        if (missingCore.length) {
+          const labels = missingCore.map(field => FIELD_ALIASES[field][0]).join(", ");
+          throw new Error(`Missing required field${missingCore.length > 1 ? "s" : ""}: ${labels}.`);
+        }
+
+        const dateOrder = detectDateOrder(records, fieldMap.orderDate);
+        const normalized = [];
+        let invalidRows = 0;
+        const warnings = [];
+
+        records.forEach((record, index) => {
+          const row = normalizeRecord(record, index, fieldMap, dateOrder);
+          if (row) normalized.push(row);
+          else invalidRows += 1;
+        });
+
+        if (!normalized.length) {
+          throw new Error("No valid rows remained after parsing dates and numeric sales/profit fields.");
+        }
+
+        const optionalFields = ["quantity", "discount", "category", "subCategory", "state", "region", "segment", "productName"];
+        const missingOptional = optionalFields.filter(field => !fieldMap[field]);
+        if (missingOptional.length) {
+          warnings.push(`Optional fields not found: ${missingOptional.map(field => FIELD_ALIASES[field][0]).join(", ")}.`);
+        }
+        if (dateOrder === "day-first-ambiguous") {
+          warnings.push("Ambiguous numeric dates were interpreted as DD-MM-YYYY, matching the supplied Superstore structure.");
+        }
+        if (invalidRows) warnings.push(`${formatInteger(invalidRows)} row(s) were skipped because core values were invalid.`);
+
+        state.rawData = normalized;
+        state.filteredData = normalized.slice();
+        state.sourceName = sourceName;
+        state.fieldMap = fieldMap;
+        state.invalidRows = invalidRows;
+        state.dateOrder = dateOrder;
+        state.warnings = warnings;
+
+        configureDashboardForDataset();
+        applyFilters();
+        showToast("Dashboard generated", `${formatInteger(normalized.length)} valid rows loaded from ${sourceName}.`, "success");
+      } catch (error) {
+        setIdleStatus();
+        showToast("Dataset validation failed", error.message || "Unknown validation error", "error", 12000);
+      }
+    }
+
+    function unwrapRecords(parsed) {
+      if (Array.isArray(parsed)) return parsed;
+      if (!parsed || typeof parsed !== "object") return [];
+
+      const commonKeys = ["data", "records", "rows", "sales", "transactions", "items"];
+      for (const key of commonKeys) {
+        if (Array.isArray(parsed[key])) return parsed[key];
+      }
+
+      const values = Object.values(parsed);
+      if (values.length && values.every(value => value && typeof value === "object" && !Array.isArray(value))) {
+        return values;
+      }
+      return [];
+    }
+
+    function normalizeKey(value) {
+      return String(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+    }
+
+    function buildFieldMap(records) {
+      const availableKeys = new Map();
+      records.slice(0, 50).forEach(record => {
+        Object.keys(record).forEach(key => {
+          const normalized = normalizeKey(key);
+          if (!availableKeys.has(normalized)) availableKeys.set(normalized, key);
+        });
+      });
+
+      const map = {};
+      Object.entries(FIELD_ALIASES).forEach(([canonical, aliases]) => {
+        for (const alias of aliases) {
+          const actual = availableKeys.get(normalizeKey(alias));
+          if (actual) {
+            map[canonical] = actual;
+            break;
+          }
+        }
+      });
+      return map;
+    }
+
+    function detectDateOrder(records, dateField) {
+      let dayFirstEvidence = 0;
+      let monthFirstEvidence = 0;
+      let ambiguous = 0;
+
+      records.slice(0, 250).forEach(record => {
+        const value = record[dateField];
+        if (typeof value !== "string") return;
+        const match = value.trim().match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+        if (!match) return;
+        const first = Number(match[1]);
+        const second = Number(match[2]);
+        if (first > 12 && second <= 12) dayFirstEvidence += 1;
+        else if (second > 12 && first <= 12) monthFirstEvidence += 1;
+        else ambiguous += 1;
+      });
+
+      if (dayFirstEvidence > monthFirstEvidence) return "day-first";
+      if (monthFirstEvidence > dayFirstEvidence) return "month-first";
+      if (ambiguous) return "day-first-ambiguous";
+      return "day-first";
+    }
+
+    function normalizeRecord(record, index, fieldMap, dateOrder) {
+      const orderDate = parseDate(readField(record, fieldMap.orderDate), dateOrder);
+      const sales = parseNumber(readField(record, fieldMap.sales));
+      const profit = parseNumber(readField(record, fieldMap.profit));
+      const orderId = safeString(readField(record, fieldMap.orderId), `ROW-${index + 1}`);
+
+      if (!orderDate || !Number.isFinite(sales) || !Number.isFinite(profit) || !orderId) return null;
+
+      let discount = parseNumber(readField(record, fieldMap.discount));
+      if (!Number.isFinite(discount)) discount = 0;
+      if (Math.abs(discount) > 1 && Math.abs(discount) <= 100) discount /= 100;
+
+      let quantity = parseNumber(readField(record, fieldMap.quantity));
+      if (!Number.isFinite(quantity)) quantity = 0;
+
+      const shipDate = parseDate(readField(record, fieldMap.shipDate), dateOrder);
+      const shippingDays = shipDate ? Math.round((shipDate.getTime() - orderDate.getTime()) / 86400000) : null;
+
+      return {
+        source: record,
+        rowId: safeString(readField(record, fieldMap.rowId), String(index + 1)),
+        orderId,
+        orderDate,
+        shipDate,
+        shipMode: safeString(readField(record, fieldMap.shipMode), "Unspecified"),
+        customerId: safeString(readField(record, fieldMap.customerId), ""),
+        customerName: safeString(readField(record, fieldMap.customerName), "Unspecified"),
+        segment: safeString(readField(record, fieldMap.segment), "Unspecified"),
+        country: safeString(readField(record, fieldMap.country), "Unspecified"),
+        city: safeString(readField(record, fieldMap.city), "Unspecified"),
+        state: safeString(readField(record, fieldMap.state), "Unspecified"),
+        postalCode: safeString(readField(record, fieldMap.postalCode), ""),
+        region: safeString(readField(record, fieldMap.region), "Unspecified"),
+        productId: safeString(readField(record, fieldMap.productId), ""),
+        category: safeString(readField(record, fieldMap.category), "Unspecified"),
+        subCategory: safeString(readField(record, fieldMap.subCategory), "Unspecified"),
+        productName: safeString(readField(record, fieldMap.productName), "Unspecified"),
+        sales,
+        quantity,
+        discount,
+        profit,
+        margin: sales !== 0 ? profit / sales : 0,
+        shippingDays
+      };
+    }
+
+    function readField(record, fieldName) {
+      return fieldName ? record[fieldName] : undefined;
+    }
+
+    function safeString(value, fallback = "") {
+      if (value === null || value === undefined) return fallback;
+      const string = String(value).trim().replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
+      return string || fallback;
+    }
+
+    function parseNumber(value) {
+      if (typeof value === "number") return value;
+      if (value === null || value === undefined || value === "") return NaN;
+      const normalized = String(value).trim().replace(/[$₹€£,%\s]/g, "").replace(/,/g, "");
+      if (!normalized) return NaN;
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : NaN;
+    }
+
+    function parseDate(value, orderHint) {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+      }
+
+      if (typeof value === "number" && Number.isFinite(value)) {
+        if (value > 1e11) {
+          const date = new Date(value);
+          return Number.isNaN(date.getTime()) ? null : date;
+        }
+        if (value > 20000 && value < 100000) {
+          const excelEpoch = Date.UTC(1899, 11, 30);
+          return new Date(excelEpoch + value * 86400000);
+        }
+      }
+
+      if (typeof value !== "string") return null;
+      const text = value.trim();
+      if (!text) return null;
+
+      let match = text.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[T\s].*)?$/);
+      if (match) return makeUtcDate(Number(match[1]), Number(match[2]), Number(match[3]));
+
+      match = text.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})(?:[T\s].*)?$/);
+      if (match) {
+        const first = Number(match[1]);
+        const second = Number(match[2]);
+        const year = Number(match[3]);
+        const monthFirst = orderHint === "month-first" || (second > 12 && first <= 12);
+        const day = monthFirst ? second : first;
+        const month = monthFirst ? first : second;
+        return makeUtcDate(year, month, day);
+      }
+
+      const timestamp = Date.parse(text);
+      if (Number.isNaN(timestamp)) return null;
+      const date = new Date(timestamp);
+      return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+    }
+
+    function makeUtcDate(year, month, day) {
+      const date = new Date(Date.UTC(year, month - 1, day));
+      if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+      return date;
+    }
+
+    function configureDashboardForDataset() {
+      const dates = state.rawData.map(row => row.orderDate.getTime());
+      const minDate = new Date(Math.min(...dates));
+      const maxDate = new Date(Math.max(...dates));
+      state.defaultDateRange = { start: isoDate(minDate), end: isoDate(maxDate) };
+
+      elements.startDate.min = state.defaultDateRange.start;
+      elements.startDate.max = state.defaultDateRange.end;
+      elements.endDate.min = state.defaultDateRange.start;
+      elements.endDate.max = state.defaultDateRange.end;
+      elements.startDate.value = state.defaultDateRange.start;
+      elements.endDate.value = state.defaultDateRange.end;
+
+      setSelectOptions(elements.regionFilter, uniqueValues(state.rawData, "region"), "All regions");
+      setSelectOptions(elements.stateFilter, uniqueValues(state.rawData, "state"), "All states");
+      setSelectOptions(elements.segmentFilter, uniqueValues(state.rawData, "segment"), "All segments");
+      setSelectOptions(elements.categoryFilter, uniqueValues(state.rawData, "category"), "All categories");
+      setSelectOptions(elements.shipModeFilter, uniqueValues(state.rawData, "shipMode"), "All ship modes");
+      populateSubCategoryFilter();
+
+      setControlsDisabled(false);
+      elements.welcomeCard.style.display = "none";
+      elements.dashboardContent.classList.add("visible");
+      elements.datasetName.textContent = state.sourceName;
+      elements.headerStatusDot.classList.add("ready");
+      elements.headerStatusText.textContent = `${formatInteger(state.rawData.length)} valid rows loaded`;
+      elements.qualityBadge.textContent = state.invalidRows ? "Warnings" : "Ready";
+      renderQualitySummary();
+    }
+
+    function setControlsDisabled(disabled) {
+      [
+        elements.startDate, elements.endDate, elements.regionFilter, elements.stateFilter, elements.segmentFilter,
+        elements.categoryFilter, elements.subCategoryFilter, elements.shipModeFilter, elements.profitabilityFilter,
+        elements.productSearch, elements.applyFiltersButton, elements.resetFiltersButton
+      ].forEach(control => { control.disabled = disabled; });
+    }
+
+    function setSelectOptions(select, values, allLabel, preserve = "") {
+      const prior = preserve || select.value;
+      select.replaceChildren();
+      const allOption = document.createElement("option");
+      allOption.value = "";
+      allOption.textContent = allLabel;
+      select.appendChild(allOption);
+
+      values.forEach(value => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+
+      select.value = values.includes(prior) ? prior : "";
+    }
+
+    function populateSubCategoryFilter() {
+      if (!state.rawData.length) return;
+      const selectedCategory = elements.categoryFilter.value;
+      const source = selectedCategory ? state.rawData.filter(row => row.category === selectedCategory) : state.rawData;
+      setSelectOptions(elements.subCategoryFilter, uniqueValues(source, "subCategory"), "All sub-categories");
+    }
+
+    function uniqueValues(rows, field) {
+      return [...new Set(rows.map(row => row[field]).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    }
+
+    function applyFilters() {
+      if (!state.rawData.length) return;
+
+      const start = elements.startDate.value ? new Date(`${elements.startDate.value}T00:00:00Z`).getTime() : -Infinity;
+      const end = elements.endDate.value ? new Date(`${elements.endDate.value}T23:59:59Z`).getTime() : Infinity;
+      const selected = {
+        region: elements.regionFilter.value,
+        state: elements.stateFilter.value,
+        segment: elements.segmentFilter.value,
+        category: elements.categoryFilter.value,
+        subCategory: elements.subCategoryFilter.value,
+        shipMode: elements.shipModeFilter.value,
+        profitability: elements.profitabilityFilter.value,
+        search: elements.productSearch.value.trim().toLowerCase()
+      };
+
+      state.filteredData = state.rawData.filter(row => {
+        const time = row.orderDate.getTime();
+        if (time < start || time > end) return false;
+        if (selected.region && row.region !== selected.region) return false;
+        if (selected.state && row.state !== selected.state) return false;
+        if (selected.segment && row.segment !== selected.segment) return false;
+        if (selected.category && row.category !== selected.category) return false;
+        if (selected.subCategory && row.subCategory !== selected.subCategory) return false;
+        if (selected.shipMode && row.shipMode !== selected.shipMode) return false;
+        if (selected.profitability === "profit" && row.profit <= 0) return false;
+        if (selected.profitability === "loss" && row.profit > 0) return false;
+        if (selected.search) {
+          const haystack = `${row.productName} ${row.productId}`.toLowerCase();
+          if (!haystack.includes(selected.search)) return false;
+        }
+        return true;
+      });
+
+      updateFilterSummary();
+      hideSelectionPanel();
+      renderAllVisuals();
+    }
+
+    function resetFilters() {
+      if (!state.rawData.length) return;
+      elements.startDate.value = state.defaultDateRange.start;
+      elements.endDate.value = state.defaultDateRange.end;
+      [
+        elements.regionFilter, elements.stateFilter, elements.segmentFilter, elements.categoryFilter,
+        elements.subCategoryFilter, elements.shipModeFilter, elements.profitabilityFilter
+      ].forEach(select => { select.value = ""; });
+      elements.productSearch.value = "";
+      populateSubCategoryFilter();
+      applyFilters();
+    }
+
+    function updateFilterSummary() {
+      const count = countActiveFilters();
+      elements.activeFilterBadge.textContent = `${count} active`;
+      elements.filterSummary.textContent = `${formatInteger(state.filteredData.length)} of ${formatInteger(state.rawData.length)} valid rows selected.`;
+      elements.datasetMeta.textContent = `${formatInteger(state.filteredData.length)} filtered rows · ${formatInteger(new Set(state.filteredData.map(row => row.orderId)).size)} distinct orders`;
+    }
+
+    function countActiveFilters() {
+      let count = 0;
+      if (elements.startDate.value && elements.startDate.value !== state.defaultDateRange.start) count += 1;
+      if (elements.endDate.value && elements.endDate.value !== state.defaultDateRange.end) count += 1;
+      [
+        elements.regionFilter, elements.stateFilter, elements.segmentFilter, elements.categoryFilter,
+        elements.subCategoryFilter, elements.shipModeFilter, elements.profitabilityFilter
+      ].forEach(select => { if (select.value) count += 1; });
+      if (elements.productSearch.value.trim()) count += 1;
+      return count;
+    }
+
+    function renderAllVisuals() {
+      if (!state.rawData.length) return;
+      renderKpis();
+      renderTrendChart();
+      renderCategoryChart();
+      renderGeographicChart();
+      renderScatterChart();
+    }
+
+    function renderKpis() {
+      const rows = state.filteredData;
+      const sales = sum(rows, "sales");
+      const profit = sum(rows, "profit");
+      const quantity = sum(rows, "quantity");
+      const orders = new Set(rows.map(row => row.orderId)).size;
+      const margin = sales !== 0 ? profit / sales : 0;
+      const products = new Set(rows.map(row => row.productId || row.productName)).size;
+      const lossRows = rows.filter(row => row.profit <= 0).length;
+
+      setKpiValue(elements.kpiSales, formatCurrency(sales, true), formatCurrency(sales, false));
+      setKpiValue(elements.kpiProfit, formatCurrency(profit, true), formatCurrency(profit, false));
+      setKpiValue(elements.kpiMargin, formatPercent(margin), formatPercent(margin, 2));
+      setKpiValue(elements.kpiOrders, formatInteger(orders), `${formatInteger(orders)} distinct orders`);
+      setKpiValue(elements.kpiUnits, formatNumber(quantity), `${formatNumber(quantity)} units`);
+
+      elements.kpiSalesNote.textContent = `${formatInteger(products)} products in the current selection`;
+      elements.kpiProfitNote.textContent = `${formatInteger(lossRows)} loss / break-even line item${lossRows === 1 ? "" : "s"}`;
+      elements.kpiMarginNote.textContent = sales ? `${formatCurrency(profit)} ÷ ${formatCurrency(sales)}` : "No sales in selection";
+      elements.kpiOrdersNote.textContent = rows.length ? `${formatInteger(rows.length)} transaction line items` : "No rows selected";
+      elements.kpiUnitsNote.textContent = orders ? `${formatNumber(quantity / orders, 1)} units per order` : "No orders selected";
+
+      elements.profitKpiCard.classList.toggle("positive", profit > 0);
+      elements.profitKpiCard.classList.toggle("negative", profit < 0);
+      elements.marginKpiCard.classList.toggle("positive", margin > 0);
+      elements.marginKpiCard.classList.toggle("negative", margin < 0);
+    }
+
+    function setKpiValue(element, display, fullValue) {
+      element.textContent = display;
+      element.title = fullValue;
+    }
+
+    function renderTrendChart() {
+      const rows = state.filteredData;
+      if (!rows.length) return renderNoData(elements.trendChart, "No transactions match the current filters.");
+
+      const granularity = elements.trendGranularity.value;
+      const grouped = new Map();
+
+      rows.forEach(row => {
+        const period = getPeriod(row.orderDate, granularity);
+        if (!grouped.has(period.key)) {
+          grouped.set(period.key, { ...period, sales: 0, profit: 0, orders: new Set(), quantity: 0 });
+        }
+        const bucket = grouped.get(period.key);
+        bucket.sales += row.sales;
+        bucket.profit += row.profit;
+        bucket.quantity += row.quantity;
+        bucket.orders.add(row.orderId);
+      });
+
+      const points = [...grouped.values()].sort((a, b) => a.start - b.start);
+      const labels = points.map(point => point.label);
+      const symbol = currencySymbol();
+      const customdata = points.map(point => [
+        point.sales !== 0 ? point.profit / point.sales : 0,
+        point.orders.size,
+        point.quantity,
+        isoDate(point.start),
+        isoDate(point.end)
+      ]);
+
+      const traces = [
+        {
+          type: "scatter",
+          mode: "lines+markers",
+          name: "Sales",
+          x: labels,
+          y: points.map(point => point.sales),
+          line: { color: COLORS.sales, width: 3 },
+          marker: { color: COLORS.sales, size: 7 },
+          customdata,
+          hovertemplate: `<b>%{x}</b><br>Sales: ${symbol}%{y:,.2f}<br>Profit margin: %{customdata[0]:.1%}<br>Orders: %{customdata[1]:,}<br>Units: %{customdata[2]:,.0f}<extra></extra>`
+        },
+        {
+          type: "scatter",
+          mode: "lines+markers",
+          name: "Profit",
+          x: labels,
+          y: points.map(point => point.profit),
+          line: { color: COLORS.profit, width: 3 },
+          marker: { color: points.map(point => point.profit < 0 ? COLORS.loss : COLORS.profit), size: 7 },
+          customdata,
+          hovertemplate: `<b>%{x}</b><br>Profit: ${symbol}%{y:,.2f}<br>Profit margin: %{customdata[0]:.1%}<br>Orders: %{customdata[1]:,}<extra></extra>`
+        }
+      ];
+
+      const layout = baseLayout({
+        height: 385,
+        margin: { l: 68, r: 25, t: 16, b: 60 },
+        hovermode: "x unified",
+        legend: { orientation: "h", x: 0, y: 1.13, xanchor: "left", yanchor: "top" },
+        xaxis: { type: "category", gridcolor: COLORS.grid, tickangle: points.length > 14 ? -35 : 0 },
+        yaxis: { title: { text: `Amount (${elements.currencySelect.value})`, font: { size: 11 } }, tickprefix: symbol, tickformat: ",.2s", gridcolor: COLORS.grid, zerolinecolor: COLORS.zero },
+        uirevision: "trend"
+      });
+
+      Plotly.react(elements.trendChart, traces, layout, plotConfig("sales-profit-trend"));
+      bindPlotClick(elements.trendChart, event => {
+        const data = event.points?.[0]?.customdata;
+        if (!data) return;
+        elements.startDate.value = data[3];
+        elements.endDate.value = data[4];
+        applyFilters();
+      });
+    }
+
+    function getPeriod(date, granularity) {
+      const year = date.getUTCFullYear();
+      const month = date.getUTCMonth();
+
+      if (granularity === "year") {
+        return {
+          key: String(year),
+          label: String(year),
+          start: new Date(Date.UTC(year, 0, 1)),
+          end: new Date(Date.UTC(year, 11, 31))
+        };
+      }
+
+      if (granularity === "quarter") {
+        const quarter = Math.floor(month / 3) + 1;
+        const startMonth = (quarter - 1) * 3;
+        return {
+          key: `${year}-Q${quarter}`,
+          label: `Q${quarter} ${year}`,
+          start: new Date(Date.UTC(year, startMonth, 1)),
+          end: new Date(Date.UTC(year, startMonth + 3, 0))
+        };
+      }
+
+      return {
+        key: `${year}-${String(month + 1).padStart(2, "0")}`,
+        label: new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" }).format(date),
+        start: new Date(Date.UTC(year, month, 1)),
+        end: new Date(Date.UTC(year, month + 1, 0))
+      };
+    }
+
+    function renderCategoryChart() {
+      const rows = state.filteredData;
+      if (!rows.length) return renderNoData(elements.categoryChart, "No product performance data for the current filters.", 455);
+
+      const level = elements.categoryLevel.value;
+      const topN = Number(elements.categoryTopN.value);
+      const grouped = aggregateBy(rows, level);
+      const groups = [...grouped.values()]
+        .sort((a, b) => b.sales - a.sales)
+        .slice(0, topN)
+        .sort((a, b) => a.sales - b.sales);
+
+      const labels = groups.map(group => group.label);
+      const customdata = groups.map(group => [
+        group.sales !== 0 ? group.profit / group.sales : 0,
+        group.orders.size,
+        group.quantity
+      ]);
+      const symbol = currencySymbol();
+
+      const traces = [
+        {
+          type: "bar",
+          orientation: "h",
+          name: "Sales",
+          y: labels,
+          x: groups.map(group => group.sales),
+          marker: { color: COLORS.sales, opacity: 0.88 },
+          customdata,
+          hovertemplate: `<b>%{y}</b><br>Sales: ${symbol}%{x:,.2f}<br>Margin: %{customdata[0]:.1%}<br>Orders: %{customdata[1]:,}<br>Units: %{customdata[2]:,.0f}<extra></extra>`
+        },
+        {
+          type: "bar",
+          orientation: "h",
+          name: "Profit",
+          y: labels,
+          x: groups.map(group => group.profit),
+          marker: { color: groups.map(group => group.profit < 0 ? COLORS.loss : COLORS.profit), opacity: 0.88 },
+          customdata,
+          hovertemplate: `<b>%{y}</b><br>Profit: ${symbol}%{x:,.2f}<br>Margin: %{customdata[0]:.1%}<br>Orders: %{customdata[1]:,}<extra></extra>`
+        }
+      ];
+
+      const dynamicHeight = Math.max(455, 170 + groups.length * 28);
+      const layout = baseLayout({
+        height: dynamicHeight,
+        barmode: "group",
+        bargap: 0.24,
+        margin: { l: Math.min(230, level === "productName" ? 190 : 120), r: 30, t: 16, b: 55 },
+        legend: { orientation: "h", x: 0, y: 1.10 },
+        xaxis: { title: { text: `Amount (${elements.currencySelect.value})`, font: { size: 11 } }, tickprefix: symbol, tickformat: ",.2s", gridcolor: COLORS.grid, zerolinecolor: COLORS.zero },
+        yaxis: { automargin: true, tickfont: { size: 10 }, gridcolor: "rgba(0,0,0,0)" },
+        uirevision: `category-${level}-${topN}`
+      });
+
+      Plotly.react(elements.categoryChart, traces, layout, plotConfig("product-performance"));
+      bindPlotClick(elements.categoryChart, event => {
+        const label = event.points?.[0]?.y;
+        if (!label) return;
+        if (level === "category") {
+          selectIfPresent(elements.categoryFilter, label);
+          populateSubCategoryFilter();
+        } else if (level === "subCategory") {
+          const matchingRow = state.rawData.find(row => row.subCategory === label);
+          if (matchingRow) {
+            selectIfPresent(elements.categoryFilter, matchingRow.category);
+            populateSubCategoryFilter();
+            selectIfPresent(elements.subCategoryFilter, label);
+          }
+        } else {
+          elements.productSearch.value = label;
+        }
+        applyFilters();
+      });
+    }
+
+    function aggregateBy(rows, field) {
+      const grouped = new Map();
+      rows.forEach(row => {
+        const label = row[field] || "Unspecified";
+        if (!grouped.has(label)) grouped.set(label, { label, sales: 0, profit: 0, quantity: 0, orders: new Set() });
+        const bucket = grouped.get(label);
+        bucket.sales += row.sales;
+        bucket.profit += row.profit;
+        bucket.quantity += row.quantity;
+        bucket.orders.add(row.orderId);
+      });
+      return grouped;
+    }
+
+    function renderGeographicChart() {
+      const rows = state.filteredData;
+      elements.mapNote.classList.remove("visible");
+      if (!rows.length) return renderNoData(elements.mapChart, "No geographic data for the current filters.", 455);
+
+      const stateGroups = aggregateBy(rows.filter(row => row.state && row.state !== "Unspecified"), "state");
+      const mapped = [...stateGroups.values()].map(group => {
+        const raw = group.label.trim();
+        const code = raw.length === 2 ? raw.toUpperCase() : STATE_NAME_TO_CODE[raw];
+        return { ...group, code };
+      }).filter(group => STATE_CODE_TO_NAME[group.code]);
+
+      const metric = elements.mapMetric.value;
+      const symbol = currencySymbol();
+
+      if (mapped.length) {
+        const metricValues = mapped.map(group => geographicMetricValue(group, metric));
+        const customdata = mapped.map(group => [
+          group.label,
+          group.sales,
+          group.profit,
+          group.sales !== 0 ? group.profit / group.sales : 0,
+          group.orders.size,
+          group.quantity
+        ]);
+        const diverging = metric === "profit" || metric === "margin";
+
+        const trace = {
+          type: "choropleth",
+          locationmode: "USA-states",
+          locations: mapped.map(group => group.code),
+          z: metricValues,
+          customdata,
+          colorscale: diverging ? [[0, "#b91c1c"], [0.5, "#f8fafc"], [1, "#047857"]] : [[0, "#dbeafe"], [0.45, "#60a5fa"], [1, "#1d4ed8"]],
+          zmid: diverging ? 0 : undefined,
+          marker: { line: { color: "#ffffff", width: 1.2 } },
+          colorbar: { title: { text: geographicMetricLabel(metric), side: "right", font: { size: 10 } }, thickness: 13, len: 0.72, tickfont: { size: 9 } },
+          hovertemplate: geographicHoverTemplate(metric, symbol)
+        };
+
+        const layout = baseLayout({
+          height: 455,
+          margin: { l: 0, r: 10, t: 8, b: 8 },
+          geo: {
+            scope: "usa",
+            projection: { type: "albers usa" },
+            showlakes: false,
+            showland: true,
+            landcolor: "#f1f5f9",
+            bgcolor: "rgba(0,0,0,0)"
+          },
+          uirevision: `map-${metric}`
+        });
+
+        Plotly.react(elements.mapChart, [trace], layout, plotConfig("geographic-performance"));
+        bindPlotClick(elements.mapChart, event => {
+          const code = event.points?.[0]?.location;
+          const fullName = STATE_CODE_TO_NAME[code] || code;
+          selectIfPresent(elements.stateFilter, fullName) || selectIfPresent(elements.stateFilter, code);
+          applyFilters();
+        });
+
+        const excluded = stateGroups.size - mapped.length;
+        if (excluded > 0) {
+          elements.mapNote.textContent = `${excluded} state/province value(s) were not recognized as U.S. states and are excluded from the map.`;
+          elements.mapNote.classList.add("visible");
+        }
+        return;
+      }
+
+      renderRegionalFallback(rows, metric, symbol);
+    }
+
+    function renderRegionalFallback(rows, metric, symbol) {
+      const field = rows.some(row => row.region && row.region !== "Unspecified") ? "region" : "state";
+      const grouped = aggregateBy(rows, field);
+      const groups = [...grouped.values()].sort((a, b) => geographicMetricValue(b, metric) - geographicMetricValue(a, metric)).slice(0, 20);
+
+      const trace = {
+        type: "bar",
+        x: groups.map(group => group.label),
+        y: groups.map(group => geographicMetricValue(group, metric)),
+        marker: { color: metric === "profit" || metric === "margin" ? groups.map(group => geographicMetricValue(group, metric) < 0 ? COLORS.loss : COLORS.profit) : COLORS.sales },
+        customdata: groups.map(group => [group.sales, group.profit, group.sales !== 0 ? group.profit / group.sales : 0, group.orders.size]),
+        hovertemplate: `<b>%{x}</b><br>${geographicMetricLabel(metric)}: %{y:,.2f}<br>Sales: ${symbol}%{customdata[0]:,.2f}<br>Profit: ${symbol}%{customdata[1]:,.2f}<br>Margin: %{customdata[2]:.1%}<br>Orders: %{customdata[3]:,}<extra></extra>`
+      };
+
+      const layout = baseLayout({
+        height: 455,
+        margin: { l: 65, r: 20, t: 18, b: 90 },
+        xaxis: { tickangle: -35, automargin: true, gridcolor: "rgba(0,0,0,0)" },
+        yaxis: { title: { text: geographicMetricLabel(metric), font: { size: 11 } }, gridcolor: COLORS.grid, zerolinecolor: COLORS.zero }
+      });
+
+      Plotly.react(elements.mapChart, [trace], layout, plotConfig("regional-performance"));
+      bindPlotClick(elements.mapChart, event => {
+        const label = event.points?.[0]?.x;
+        if (!label) return;
+        if (field === "region") selectIfPresent(elements.regionFilter, label);
+        else selectIfPresent(elements.stateFilter, label);
+        applyFilters();
+      });
+
+      elements.mapNote.textContent = `No recognized U.S. states were found, so the visualization is shown as a ${field} ranking.`;
+      elements.mapNote.classList.add("visible");
+    }
+
+    function geographicMetricValue(group, metric) {
+      if (metric === "profit") return group.profit;
+      if (metric === "margin") return group.sales !== 0 ? (group.profit / group.sales) * 100 : 0;
+      if (metric === "orders") return group.orders.size;
+      return group.sales;
+    }
+
+    function geographicMetricLabel(metric) {
+      return { sales: "Sales", profit: "Profit", margin: "Profit margin %", orders: "Orders" }[metric] || "Sales";
+    }
+
+    function geographicHoverTemplate(metric, symbol) {
+      const metricLine = {
+        sales: `Sales: ${symbol}%{z:,.2f}`,
+        profit: `Profit: ${symbol}%{z:,.2f}`,
+        margin: "Profit margin: %{z:.1f}%",
+        orders: "Orders: %{z:,.0f}"
+      }[metric];
+      return `<b>%{customdata[0]}</b><br>${metricLine}<br>Sales: ${symbol}%{customdata[1]:,.2f}<br>Profit: ${symbol}%{customdata[2]:,.2f}<br>Margin: %{customdata[3]:.1%}<br>Orders: %{customdata[4]:,}<br>Units: %{customdata[5]:,.0f}<extra></extra>`;
+    }
+
+    function renderScatterChart() {
+      const rows = state.filteredData;
+      elements.scatterNote.classList.remove("visible");
+      if (!rows.length) return renderNoData(elements.scatterChart, "No transactions match the current filters.", 455);
+
+      const webglAvailable = supportsWebGL();
+      const scatterLimit = webglAvailable ? MAX_SCATTER_POINTS : 5000;
+      const sampled = deterministicSample(rows, scatterLimit);
+      if (sampled.length < rows.length) {
+        const reason = webglAvailable ? "browser performance" : "WebGL is unavailable";
+        elements.scatterNote.textContent = `Showing a deterministic sample of ${formatInteger(sampled.length)} out of ${formatInteger(rows.length)} rows because ${reason}. All other dashboard metrics use the full filtered dataset.`;
+        elements.scatterNote.classList.add("visible");
+      }
+
+      const metric = elements.scatterMetric.value;
+      const scatterType = webglAvailable && sampled.length > 2500 ? "scattergl" : "scatter";
+      const categories = uniqueValues(sampled, "category");
+      const maxSales = Math.max(...sampled.map(row => Math.max(0, row.sales)), 1);
+      const sizeRef = (2 * maxSales) / (48 ** 2);
+      const symbol = currencySymbol();
+
+      const traces = categories.map((category, index) => {
+        const categoryRows = sampled.filter(row => row.category === category);
+        return {
+          type: scatterType,
+          mode: "markers",
+          name: category,
+          x: categoryRows.map(row => row.discount * 100),
+          y: categoryRows.map(row => metric === "profit" ? row.profit : row.margin * 100),
+          marker: {
+            color: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
+            opacity: 0.72,
+            size: categoryRows.map(row => Math.max(0, row.sales)),
+            sizemode: "area",
+            sizeref: sizeRef,
+            sizemin: 5,
+            line: { width: 0.5, color: "rgba(255,255,255,0.75)" }
+          },
+          customdata: categoryRows.map(row => [
+            escapeHtml(row.orderId), escapeHtml(row.productName), row.sales, row.profit, row.margin,
+            row.quantity, escapeHtml(row.state), escapeHtml(row.region), escapeHtml(row.subCategory),
+            escapeHtml(row.productId), escapeHtml(row.city), escapeHtml(row.country)
+          ]),
+          hovertemplate: metric === "profit"
+            ? `<b>%{customdata[1]}</b><br>Order: %{customdata[0]}<br>Discount: %{x:.1f}%<br>Profit: ${symbol}%{y:,.2f}<br>Sales: ${symbol}%{customdata[2]:,.2f}<br>Margin: %{customdata[4]:.1%}<br>State: %{customdata[6]}<extra>%{fullData.name}</extra>`
+            : `<b>%{customdata[1]}</b><br>Order: %{customdata[0]}<br>Discount: %{x:.1f}%<br>Profit margin: %{y:.1f}%<br>Sales: ${symbol}%{customdata[2]:,.2f}<br>Profit: ${symbol}%{customdata[3]:,.2f}<br>State: %{customdata[6]}<extra>%{fullData.name}</extra>`
+        };
+      });
+
+      const layout = baseLayout({
+        height: 455,
+        margin: { l: 72, r: 28, t: 15, b: 62 },
+        legend: { orientation: "h", x: 0, y: 1.14, font: { size: 9 } },
+        xaxis: { title: { text: "Discount (%)", font: { size: 11 } }, ticksuffix: "%", gridcolor: COLORS.grid, rangemode: "tozero" },
+        yaxis: {
+          title: { text: metric === "profit" ? `Profit (${elements.currencySelect.value})` : "Profit margin (%)", font: { size: 11 } },
+          tickprefix: metric === "profit" ? symbol : "",
+          ticksuffix: metric === "profit" ? "" : "%",
+          tickformat: metric === "profit" ? ",.2s" : ".1f",
+          gridcolor: COLORS.grid,
+          zeroline: true,
+          zerolinecolor: COLORS.zero,
+          zerolinewidth: 2
+        },
+        hovermode: "closest",
+        uirevision: `scatter-${metric}`
+      });
+
+      Plotly.react(elements.scatterChart, traces, layout, plotConfig("discount-profitability"));
+      bindPlotClick(elements.scatterChart, event => {
+        const data = event.points?.[0]?.customdata;
+        if (data) showSelectionDetails(data);
+      });
+    }
+
+    let webglSupportCache;
+
+    function supportsWebGL() {
+      if (typeof webglSupportCache === "boolean") return webglSupportCache;
+      try {
+        const canvas = document.createElement("canvas");
+        webglSupportCache = Boolean(
+          window.WebGLRenderingContext &&
+          (canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
+        );
+      } catch {
+        webglSupportCache = false;
+      }
+      return webglSupportCache;
+    }
+
+    function deterministicSample(rows, maxPoints) {
+      if (rows.length <= maxPoints) return rows;
+      const stride = rows.length / maxPoints;
+      const sampled = [];
+      for (let i = 0; i < maxPoints; i += 1) sampled.push(rows[Math.floor(i * stride)]);
+      return sampled;
+    }
+
+    function showSelectionDetails(data) {
+      elements.selectedOrder.textContent = data[0] || "—";
+      elements.selectedProduct.textContent = data[1] || "—";
+      elements.selectedFinancials.textContent = `${formatCurrency(data[2])} / ${formatCurrency(data[3])}`;
+      const cityState = [data[10], data[6]].filter(value => value && value !== "Unspecified").join(", ");
+      elements.selectedLocation.textContent = cityState || data[7] || data[11] || "—";
+      elements.selectionPanel.classList.add("visible");
+    }
+
+    function hideSelectionPanel() {
+      elements.selectionPanel.classList.remove("visible");
+    }
+
+    function renderQualitySummary() {
+      const rows = state.rawData;
+      const minDate = new Date(Math.min(...rows.map(row => row.orderDate.getTime())));
+      const maxDate = new Date(Math.max(...rows.map(row => row.orderDate.getTime())));
+      const lossRows = rows.filter(row => row.profit <= 0).length;
+      const distinctOrders = new Set(rows.map(row => row.orderId)).size;
+      const dateOrderLabel = state.dateOrder === "month-first" ? "MM-DD-YYYY" : "DD-MM-YYYY";
+
+      const items = [
+        ["Valid rows", formatInteger(rows.length)],
+        ["Skipped rows", formatInteger(state.invalidRows)],
+        ["Distinct orders", formatInteger(distinctOrders)],
+        ["Date coverage", `${formatDate(minDate)} – ${formatDate(maxDate)}`],
+        ["Date interpretation", dateOrderLabel],
+        ["Loss / break-even rows", formatInteger(lossRows)]
+      ];
+
+      if (state.warnings.length) items.push(["Warnings", state.warnings.join(" ")]);
+
+      elements.qualityList.replaceChildren();
+      items.forEach(([label, value]) => {
+        const li = document.createElement("li");
+        li.className = "quality-item";
+        const span = document.createElement("span");
+        span.textContent = label;
+        const strong = document.createElement("strong");
+        strong.textContent = value;
+        li.append(span, strong);
+        elements.qualityList.appendChild(li);
+      });
+    }
+
+    function renderEmptyCharts() {
+      [elements.trendChart, elements.categoryChart, elements.mapChart, elements.scatterChart].forEach(chart => {
+        if (chart) chart.innerHTML = "";
+      });
+    }
+
+    function renderNoData(chart, message, height = 385) {
+      Plotly.react(chart, [], baseLayout({
+        height,
+        margin: { l: 20, r: 20, t: 20, b: 20 },
+        xaxis: { visible: false },
+        yaxis: { visible: false },
+        annotations: [{
+          text: escapeHtml(message),
+          x: 0.5,
+          y: 0.5,
+          xref: "paper",
+          yref: "paper",
+          showarrow: false,
+          font: { color: COLORS.muted, size: 13 },
+          align: "center"
+        }]
+      }), plotConfig("no-data"));
+    }
+
+    function baseLayout(overrides = {}) {
+      return {
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        font: { family: "Inter, ui-sans-serif, system-ui, sans-serif", color: COLORS.text, size: 11 },
+        autosize: true,
+        ...overrides
+      };
+    }
+
+    function plotConfig(filename) {
+      return {
+        responsive: true,
+        displaylogo: false,
+        displayModeBar: true,
+        scrollZoom: true,
+        doubleClick: "reset",
+        showTips: true,
+        modeBarButtonsToRemove: ["sendDataToCloud", "editInChartStudio", "lasso2d"],
+        toImageButtonOptions: { format: "png", filename, height: 900, width: 1500, scale: 2 }
+      };
+    }
+
+    function bindPlotClick(chart, handler) {
+      if (typeof chart.removeAllListeners === "function") chart.removeAllListeners("plotly_click");
+      if (typeof chart.on === "function") chart.on("plotly_click", handler);
+    }
+
+    function selectIfPresent(select, value) {
+      const exists = [...select.options].some(option => option.value === value);
+      if (exists) {
+        select.value = value;
+        return true;
+      }
+      return false;
+    }
+
+    function sum(rows, field) {
+      return rows.reduce((total, row) => total + (Number.isFinite(row[field]) ? row[field] : 0), 0);
+    }
+
+    function currencySymbol() {
+      return CURRENCY_SYMBOLS[elements.currencySelect.value] || "$";
+    }
+
+    function formatCurrency(value, compact = false) {
+      const currency = elements.currencySelect?.value || "USD";
+      const options = compact && Math.abs(value) >= 10000
+        ? { style: "currency", currency, notation: "compact", maximumFractionDigits: 2 }
+        : { style: "currency", currency, maximumFractionDigits: 2 };
+      try {
+        return new Intl.NumberFormat("en-US", options).format(Number.isFinite(value) ? value : 0);
+      } catch {
+        return `${currencySymbol()}${formatNumber(value, 2)}`;
+      }
+    }
+
+    function formatNumber(value, digits = 0) {
+      return new Intl.NumberFormat("en-US", { maximumFractionDigits: digits }).format(Number.isFinite(value) ? value : 0);
+    }
+
+    function formatInteger(value) {
+      return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Number.isFinite(value) ? value : 0);
+    }
+
+    function formatPercent(value, digits = 1) {
+      return new Intl.NumberFormat("en-US", { style: "percent", maximumFractionDigits: digits, minimumFractionDigits: digits }).format(Number.isFinite(value) ? value : 0);
+    }
+
+    function formatDate(date) {
+      return new Intl.DateTimeFormat("en-US", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(date);
+    }
+
+    function isoDate(date) {
+      return date.toISOString().slice(0, 10);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function exportFilteredCsv() {
+      if (!state.filteredData.length) {
+        showToast("Nothing to export", "The current filters contain no rows.", "error");
+        return;
+      }
+
+      const headers = [
+        "Row ID", "Order ID", "Order Date", "Ship Date", "Ship Mode", "Customer ID", "Customer Name", "Segment",
+        "Country", "City", "State", "Postal Code", "Region", "Product ID", "Category", "Sub-Category", "Product Name",
+        "Sales", "Quantity", "Discount", "Profit", "Profit Margin", "Shipping Days"
+      ];
+
+      const rows = state.filteredData.map(row => [
+        row.rowId, row.orderId, isoDate(row.orderDate), row.shipDate ? isoDate(row.shipDate) : "", row.shipMode,
+        row.customerId, row.customerName, row.segment, row.country, row.city, row.state, row.postalCode, row.region,
+        row.productId, row.category, row.subCategory, row.productName, row.sales, row.quantity, row.discount,
+        row.profit, row.margin, row.shippingDays ?? ""
+      ]);
+
+      const csv = [headers, ...rows].map(row => row.map(csvCell).join(",")).join("\r\n");
+      const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${sanitizeFilename(state.sourceName.replace(/\.json$/i, "")) || "sales"}-filtered.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function csvCell(value) {
+      let text = String(value ?? "");
+      if (/^[=+@]/.test(text) || /^-\D/.test(text)) text = `'${text}`;
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+
+    function sanitizeFilename(value) {
+      return String(value).replace(/[^a-z0-9-_]+/gi, "-").replace(/^-+|-+$/g, "");
+    }
+
+    function setLoadingStatus(message) {
+      elements.headerStatusDot.classList.remove("ready");
+      elements.headerStatusText.textContent = message;
+    }
+
+    function setIdleStatus() {
+      if (state.rawData.length) {
+        elements.headerStatusDot.classList.add("ready");
+        elements.headerStatusText.textContent = `${formatInteger(state.rawData.length)} valid rows loaded`;
+      } else {
+        elements.headerStatusDot.classList.remove("ready");
+        elements.headerStatusText.textContent = "No dataset loaded";
+      }
+    }
+
+    function showToast(title, message, type = "info", duration = 6000) {
+      const toast = document.createElement("div");
+      toast.className = `toast ${type}`;
+      const icon = document.createElement("div");
+      icon.textContent = type === "error" ? "⚠" : type === "success" ? "✓" : "ℹ";
+      const content = document.createElement("div");
+      const strong = document.createElement("strong");
+      strong.textContent = title;
+      const paragraph = document.createElement("p");
+      paragraph.textContent = message;
+      content.append(strong, paragraph);
+      toast.append(icon, content);
+      elements.toastContainer.appendChild(toast);
+      window.setTimeout(() => toast.remove(), duration);
+    }
+
+    function debounce(fn, wait) {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), wait);
+      };
+    }
+  </script>
+</body>
+</html>

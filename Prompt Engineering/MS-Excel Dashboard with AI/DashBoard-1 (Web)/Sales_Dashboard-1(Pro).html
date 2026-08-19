@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Interactive Sales Performance Dashboard (Plotly)</title>
+
+  <!-- Latest Plotly.js from CDN -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #111a2e;
+      --panel2: #0f1730;
+      --text: #e8eefc;
+      --muted: #a7b3d6;
+      --border: rgba(255,255,255,0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: radial-gradient(1200px 800px at 20% 0%, #15224a 0%, var(--bg) 55%);
+      color: var(--text);
+    }
+    header {
+      padding: 18px 18px 8px 18px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.15);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header h1 { margin: 0 0 6px 0; font-size: 18px; font-weight: 800; }
+    header p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.35; }
+
+    .wrap { padding: 16px 18px 24px 18px; }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr 1fr;
+      gap: 10px;
+      align-items: end;
+      margin-top: 14px;
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .control label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    input[type="file"], select, input[type="date"], input[type="number"] {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+      outline: none;
+    }
+    select option { background: #0b1220; }
+
+    .btnrow {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.10);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 700;
+    }
+    button:hover { background: rgba(255,255,255,0.16); }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .kpi {
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(17,26,46,0.9), rgba(15,23,48,0.9));
+      min-height: 78px;
+    }
+    .kpi .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .kpi .value { font-size: 20px; font-weight: 900; letter-spacing: 0.2px; }
+    .kpi .sub { margin-top: 4px; font-size: 12px; color: var(--muted); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .plot { height: 390px; }
+    .plot.tall { height: 430px; }
+    .plot.short { height: 340px; }
+
+    .footnote {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .status { margin-top: 10px; font-size: 12px; color: var(--muted); }
+    .status strong { color: var(--text); }
+
+    @media (max-width: 1100px) {
+      .controls { grid-template-columns: 1fr 1fr; }
+      .kpis { grid-template-columns: 1fr 1fr; }
+      .grid { grid-template-columns: 1fr; }
+      .grid2 { grid-template-columns: 1fr; }
+      .plot, .plot.tall, .plot.short { height: 360px; }
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <h1>Sales Performance Dashboard (Upload JSON → Interactive Plotly Dashboard)</h1>
+  <p>
+    Upload a <strong>JSON array of objects</strong> (line-item sales rows). Use filters to slice and click charts to cross-filter.
+    Added: <strong>Box Plot</strong> to analyze distribution of order line sales by Category.
+  </p>
+
+  <div class="wrap" style="padding: 0; margin-top: 10px;">
+    <div class="controls">
+      <div class="card control">
+        <label>1) Upload sales JSON file</label>
+        <input id="fileInput" type="file" accept=".json,application/json" />
+        <div class="status" id="fileStatus">No file loaded.</div>
+      </div>
+
+      <div class="card control">
+        <label>2) Date range (Order Date)</label>
+        <div style="display:flex; gap:8px;">
+          <input id="dateFrom" type="date"/>
+          <input id="dateTo" type="date"/>
+        </div>
+      </div>
+
+      <div class="card control">
+        <label>Region</label>
+        <select id="regionSel"></select>
+      </div>
+
+      <div class="card control">
+        <label>Segment</label>
+        <select id="segmentSel"></select>
+      </div>
+
+      <div class="card control">
+        <label>Category</label>
+        <select id="categorySel"></select>
+      </div>
+
+      <div class="card control">
+        <label>Top N Products</label>
+        <input id="topN" type="number" min="5" max="50" value="10"/>
+      </div>
+    </div>
+
+    <div class="btnrow">
+      <button id="applyBtn">Apply Filters</button>
+      <button id="resetBtn">Reset Filters</button>
+      <button id="loadSampleBtn">Load Your Sample</button>
+      <span class="status" id="filterStatus"></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- KPI cards -->
+  <div class="kpis">
+    <div class="kpi">
+      <div class="label">Total Sales</div>
+      <div class="value" id="kpiSales">—</div>
+      <div class="sub" id="kpiSalesSub">—</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Total Profit</div>
+      <div class="value" id="kpiProfit">—</div>
+      <div class="sub" id="kpiProfitSub">—</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Profit Margin</div>
+      <div class="value" id="kpiMargin">—</div>
+      <div class="sub" id="kpiMarginSub">Profit / Sales</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Orders</div>
+      <div class="value" id="kpiOrders">—</div>
+      <div class="sub">Distinct Order ID</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Avg Order Value</div>
+      <div class="value" id="kpiAOV">—</div>
+      <div class="sub">Sales / Distinct Orders</div>
+    </div>
+  </div>
+
+  <!-- Plots layout -->
+  <div class="grid">
+    <div class="card"><div id="trendPlot" class="plot"></div></div>
+    <div class="card"><div id="marginBar" class="plot"></div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card"><div id="geoPlot" class="plot short"></div></div>
+    <div class="card"><div id="topProducts" class="plot short"></div></div>
+  </div>
+
+  <div class="card" style="margin-top:10px;">
+    <div id="discountScatter" class="plot tall"></div>
+  </div>
+
+  <!-- NEW: Box Plot -->
+  <div class="card" style="margin-top:10px;">
+    <div id="salesBoxPlot" class="plot tall"></div>
+  </div>
+
+  <div class="footnote">
+    <strong>Cross-filtering:</strong> Click bars/points to filter the dashboard by selection. Reset clears click-filters.
+    <br/>
+    <strong>Box plot:</strong> Shows distribution of <em>line-item Sales</em> by Category (median, quartiles, outliers),
+    helping spot categories with higher typical order-line values or high variability.
+  </div>
+</div>
+
+<script>
+  function toNumber(x){ const n = Number(x); return Number.isFinite(n) ? n : 0; }
+  function uniq(arr){ return [...new Set(arr.filter(v => v !== undefined && v !== null && String(v).trim() !== ""))]; }
+  function fmtCurrency(n){ const sign = n < 0 ? "-" : ""; const abs = Math.abs(n);
+    return sign + abs.toLocaleString(undefined,{style:"currency",currency:"USD",maximumFractionDigits:2}); }
+  function fmtNumber(n){ return n.toLocaleString(undefined,{maximumFractionDigits:0}); }
+  function fmtPct(n){ return (n*100).toLocaleString(undefined,{maximumFractionDigits:2}) + "%"; }
+
+  function parseDateDMY(s){
+    if (!s) return null;
+    const parts = String(s).trim().split(/[\/\-\.]/).map(p => p.trim());
+    if (parts.length < 3) return null;
+    const dd = Number(parts[0]), mm = Number(parts[1]), yyyy = Number(parts[2]);
+    if (!Number.isFinite(dd) || !Number.isFinite(mm) || !Number.isFinite(yyyy)) return null;
+    return new Date(Date.UTC(yyyy, mm-1, dd));
+  }
+  function dateToISO(d){
+    const yyyy=d.getUTCFullYear();
+    const mm=String(d.getUTCMonth()+1).padStart(2,"0");
+    const dd=String(d.getUTCDate()).padStart(2,"0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  function clamp(val,min,max){ return Math.max(min, Math.min(max, val)); }
+
+  let rawData = [];
+  let data = [];
+  let crossFilter = { region:null, segment:null, category:null, subCategory:null, productName:null, state:null };
+
+  const els = {
+    fileInput: document.getElementById("fileInput"),
+    fileStatus: document.getElementById("fileStatus"),
+    dateFrom: document.getElementById("dateFrom"),
+    dateTo: document.getElementById("dateTo"),
+    regionSel: document.getElementById("regionSel"),
+    segmentSel: document.getElementById("segmentSel"),
+    categorySel: document.getElementById("categorySel"),
+    topN: document.getElementById("topN"),
+    applyBtn: document.getElementById("applyBtn"),
+    resetBtn: document.getElementById("resetBtn"),
+    loadSampleBtn: document.getElementById("loadSampleBtn"),
+    filterStatus: document.getElementById("filterStatus"),
+    kpiSales: document.getElementById("kpiSales"),
+    kpiSalesSub: document.getElementById("kpiSalesSub"),
+    kpiProfit: document.getElementById("kpiProfit"),
+    kpiProfitSub: document.getElementById("kpiProfitSub"),
+    kpiMargin: document.getElementById("kpiMargin"),
+    kpiMarginSub: document.getElementById("kpiMarginSub"),
+    kpiOrders: document.getElementById("kpiOrders"),
+    kpiAOV: document.getElementById("kpiAOV"),
+  };
+
+  const sampleJSON = [
+    {
+      "Row ID": 1,
+      "Order ID": "CA-2017-152156",
+      "Order Date": "08-11-2017",
+      "Ship Date": "11-11-2017",
+      "Ship Mode": "Second Class",
+      "Customer ID": "CG-12520",
+      "Customer Name": "Claire Gute",
+      "Segment": "Consumer",
+      "Country": "United States",
+      "City": "Henderson",
+      "State": "Kentucky",
+      "Postal Code": 42420,
+      "Region": "South",
+      "Product ID": "FUR-BO-10001798",
+      "Category": "Furniture",
+      "Sub-Category": "Bookcases",
+      "Product Name": "Bush Somerset Collection Bookcase",
+      "Sales": 261.96,
+      "Quantity": 2,
+      "Discount": 0,
+      "Profit": 41.9136
+    },
+    {
+      "Row ID": 2,
+      "Order ID": "CA-2017-152156",
+      "Order Date": "08-11-2017",
+      "Ship Date": "11-11-2017",
+      "Ship Mode": "Second Class",
+      "Customer ID": "CG-12520",
+      "Customer Name": "Claire Gute",
+      "Segment": "Consumer",
+      "Country": "United States",
+      "City": "Henderson",
+      "State": "Kentucky",
+      "Postal Code": 42420,
+      "Region": "South",
+      "Product ID": "FUR-CH-10000454",
+      "Category": "Furniture",
+      "Sub-Category": "Chairs",
+      "Product Name": "Hon Deluxe Fabric Upholstered Stacking Chairs, Rounded Back",
+      "Sales": 731.94,
+      "Quantity": 3,
+      "Discount": 0,
+      "Profit": 219.582
+    },
+    {
+      "Row ID": 3,
+      "Order ID": "CA-2017-138688",
+      "Order Date": "12-06-2017",
+      "Ship Date": "16-06-2017",
+      "Ship Mode": "Second Class",
+      "Customer ID": "DV-13045",
+      "Customer Name": "Darrin Van Huff",
+      "Segment": "Corporate",
+      "Country": "United States",
+      "City": "Los Angeles",
+      "State": "California",
+      "Postal Code": 90036,
+      "Region": "West",
+      "Product ID": "OFF-LA-10000240",
+      "Category": "Office Supplies",
+      "Sub-Category": "Labels",
+      "Product Name": "Self-Adhesive Address Labels for Typewriters by Universal",
+      "Sales": 14.62,
+      "Quantity": 2,
+      "Discount": 0,
+      "Profit": 6.8714
+    }
+  ];
+
+  function normalize(rows){
+    const out=[];
+    for (const r of rows){
+      const od = parseDateDMY(r["Order Date"]) || (r["Order Date"] ? new Date(r["Order Date"]) : null);
+      if (!od || isNaN(od.getTime())) continue;
+      out.push({
+        rowId:r["Row ID"],
+        orderId:r["Order ID"],
+        orderDate:od,
+        shipDate: parseDateDMY(r["Ship Date"]) || (r["Ship Date"] ? new Date(r["Ship Date"]) : null),
+        shipMode:r["Ship Mode"],
+        customerId:r["Customer ID"],
+        customerName:r["Customer Name"],
+        segment:r["Segment"],
+        country:r["Country"],
+        city:r["City"],
+        state:r["State"],
+        postalCode:r["Postal Code"],
+        region:r["Region"],
+        productId:r["Product ID"],
+        category:r["Category"],
+        subCategory:r["Sub-Category"],
+        productName:r["Product Name"],
+        sales:toNumber(r["Sales"]),
+        quantity:toNumber(r["Quantity"]),
+        discount:toNumber(r["Discount"]),
+        profit:toNumber(r["Profit"])
+      });
+    }
+    return out;
+  }
+
+  function fillSelect(selectEl, values, placeholder="All"){
+    selectEl.innerHTML="";
+    const opt0=document.createElement("option");
+    opt0.value=""; opt0.textContent=placeholder;
+    selectEl.appendChild(opt0);
+    for (const v of values){
+      const opt=document.createElement("option");
+      opt.value=v; opt.textContent=v;
+      selectEl.appendChild(opt);
+    }
+  }
+
+  function getFilteredData(){
+    const region = els.regionSel.value || null;
+    const segment = els.segmentSel.value || null;
+    const category = els.categorySel.value || null;
+
+    const dFrom = els.dateFrom.value ? new Date(els.dateFrom.value + "T00:00:00Z") : null;
+    const dTo   = els.dateTo.value   ? new Date(els.dateTo.value   + "T23:59:59Z") : null;
+
+    return data.filter(r => {
+      if (dFrom && r.orderDate < dFrom) return false;
+      if (dTo && r.orderDate > dTo) return false;
+
+      if (region && r.region !== region) return false;
+      if (segment && r.segment !== segment) return false;
+      if (category && r.category !== category) return false;
+
+      if (crossFilter.region && r.region !== crossFilter.region) return false;
+      if (crossFilter.segment && r.segment !== crossFilter.segment) return false;
+      if (crossFilter.category && r.category !== crossFilter.category) return false;
+      if (crossFilter.subCategory && r.subCategory !== crossFilter.subCategory) return false;
+      if (crossFilter.productName && r.productName !== crossFilter.productName) return false;
+      if (crossFilter.state && r.state !== crossFilter.state) return false;
+
+      return true;
+    });
+  }
+
+  function updateFilterStatus(filtered){
+    const parts=[];
+    if (els.dateFrom.value || els.dateTo.value) parts.push(`Date: ${els.dateFrom.value||"…"} → ${els.dateTo.value||"…"}`);
+    if (els.regionSel.value) parts.push(`Region: ${els.regionSel.value}`);
+    if (els.segmentSel.value) parts.push(`Segment: ${els.segmentSel.value}`);
+    if (els.categorySel.value) parts.push(`Category: ${els.categorySel.value}`);
+
+    const cf=[];
+    for (const [k,v] of Object.entries(crossFilter)) if (v) cf.push(`${k}=${v}`);
+    if (cf.length) parts.push(`Click-filter: ${cf.join(", ")}`);
+
+    els.filterStatus.textContent = parts.length
+      ? `Active filters: ${parts.join(" | ")} | Rows: ${filtered.length.toLocaleString()}`
+      : `Rows: ${filtered.length.toLocaleString()}`;
+  }
+
+  function updateKPIs(filtered){
+    const totalSales = filtered.reduce((a,r)=>a+r.sales,0);
+    const totalProfit= filtered.reduce((a,r)=>a+r.profit,0);
+    const orders = new Set(filtered.map(r=>r.orderId).filter(Boolean)).size;
+    const margin = totalSales ? totalProfit/totalSales : 0;
+    const aov = orders ? totalSales/orders : 0;
+
+    els.kpiSales.textContent = fmtCurrency(totalSales);
+    els.kpiProfit.textContent = fmtCurrency(totalProfit);
+    els.kpiMargin.textContent = fmtPct(margin);
+    els.kpiOrders.textContent = fmtNumber(orders);
+    els.kpiAOV.textContent = fmtCurrency(aov);
+
+    els.kpiSalesSub.textContent = `${fmtNumber(filtered.reduce((a,r)=>a+r.quantity,0))} units`;
+    els.kpiProfitSub.textContent = margin >= 0 ? "Positive margin" : "Negative margin";
+  }
+
+  const commonLayout = {
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
+    font: { color: "#e8eefc", family: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" },
+    margin: { l: 50, r: 20, t: 50, b: 45 },
+    hovermode: "closest",
+  };
+  const config = { responsive:true, displaylogo:false };
+
+  function renderTrend(filtered){
+    const map=new Map();
+    for (const r of filtered){
+      const y=r.orderDate.getUTCFullYear();
+      const m=r.orderDate.getUTCMonth();
+      const key=`${y}-${String(m+1).padStart(2,"0")}`;
+      const curr=map.get(key)||{sales:0,profit:0};
+      curr.sales+=r.sales; curr.profit+=r.profit;
+      map.set(key,curr);
+    }
+    const keys=[...map.keys()].sort();
+    const x=keys.map(k=>k+"-01");
+    const sales=keys.map(k=>map.get(k).sales);
+    const profit=keys.map(k=>map.get(k).profit);
+
+    Plotly.react("trendPlot", [
+      {type:"scatter",mode:"lines+markers",name:"Sales",x,y:sales,hovertemplate:"%{x}<br>Sales: %{y:$,.2f}<extra></extra>"},
+      {type:"scatter",mode:"lines+markers",name:"Profit",x,y:profit,hovertemplate:"%{x}<br>Profit: %{y:$,.2f}<extra></extra>"}
+    ], {
+      ...commonLayout,
+      title:{text:"1) Sales & Profit Trend (Monthly)",x:0.02,xanchor:"left"},
+      xaxis:{title:"Month",type:"date",gridcolor:"rgba(255,255,255,0.08)"},
+      yaxis:{title:"Amount (USD)",gridcolor:"rgba(255,255,255,0.08)"},
+      legend:{orientation:"h",y:1.15,x:0,bgcolor:"rgba(0,0,0,0)"}
+    }, config);
+  }
+
+  function renderMarginBar(filtered){
+    const catAgg=new Map();
+    for (const r of filtered){
+      const cat=r.category||"(Unknown)";
+      if (!catAgg.has(cat)) catAgg.set(cat,{sales:0,profit:0});
+      const c=catAgg.get(cat);
+      c.sales+=r.sales; c.profit+=r.profit;
+    }
+    const rows=[...catAgg.entries()].map(([cat,v])=>({
+      cat,
+      sales:v.sales,
+      profit:v.profit,
+      margin: v.sales ? v.profit/v.sales : 0
+    })).sort((a,b)=>b.margin-a.margin);
+
+    const x=rows.map(r=>r.cat);
+    const y=rows.map(r=>r.margin);
+    const custom=rows.map(r=>`Category: ${r.cat}<br>Margin: ${(r.margin*100).toFixed(2)}%<br>Sales: ${fmtCurrency(r.sales)}<br>Profit: ${fmtCurrency(r.profit)}`);
+
+    Plotly.react("marginBar", [{
+      type:"bar",x,y,text:y.map(v=>(v*100).toFixed(1)+"%"),textposition:"auto",
+      customdata:custom,hovertemplate:"%{customdata}<extra></extra>",name:"Profit Margin"
+    }],{
+      ...commonLayout,
+      title:{text:"2) Profit Margin by Category (Click to filter)",x:0.02,xanchor:"left"},
+      xaxis:{title:"Category",tickangle:-20,gridcolor:"rgba(255,255,255,0.08)"},
+      yaxis:{title:"Profit Margin",tickformat:".0%",gridcolor:"rgba(255,255,255,0.08)"}
+    },config);
+
+    document.getElementById("marginBar").on("plotly_click",(ev)=>{
+      if (!ev?.points?.length) return;
+      const cat=ev.points[0].x;
+      crossFilter.category = (crossFilter.category===cat) ? null : cat;
+      redrawAll();
+    });
+  }
+
+  function renderGeo(filtered){
+    const stateAgg=new Map();
+    for (const r of filtered){
+      if (!r.state) continue;
+      const curr=stateAgg.get(r.state)||{sales:0,profit:0};
+      curr.sales+=r.sales; curr.profit+=r.profit;
+      stateAgg.set(r.state,curr);
+    }
+    if (stateAgg.size===0){
+      Plotly.react("geoPlot",[{
+        type:"bar",
+        x:["Sales","Profit"],
+        y:[filtered.reduce((a,r)=>a+r.sales,0), filtered.reduce((a,r)=>a+r.profit,0)],
+        hovertemplate:"%{x}: %{y:$,.2f}<extra></extra>"
+      }],{
+        ...commonLayout,
+        title:{text:"3) Geographic Performance (No State data found)",x:0.02,xanchor:"left"},
+        xaxis:{gridcolor:"rgba(255,255,255,0.08)"},
+        yaxis:{gridcolor:"rgba(255,255,255,0.08)"}
+      },config);
+      return;
+    }
+
+    const stateToAbbr={
+      "Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA","Colorado":"CO","Connecticut":"CT","Delaware":"DE",
+      "District of Columbia":"DC","Florida":"FL","Georgia":"GA","Hawaii":"HI","Idaho":"ID","Illinois":"IL","Indiana":"IN","Iowa":"IA",
+      "Kansas":"KS","Kentucky":"KY","Louisiana":"LA","Maine":"ME","Maryland":"MD","Massachusetts":"MA","Michigan":"MI","Minnesota":"MN",
+      "Mississippi":"MS","Missouri":"MO","Montana":"MT","Nebraska":"NE","Nevada":"NV","New Hampshire":"NH","New Jersey":"NJ",
+      "New Mexico":"NM","New York":"NY","North Carolina":"NC","North Dakota":"ND","Ohio":"OH","Oklahoma":"OK","Oregon":"OR",
+      "Pennsylvania":"PA","Rhode Island":"RI","South Carolina":"SC","South Dakota":"SD","Tennessee":"TN","Texas":"TX","Utah":"UT",
+      "Vermont":"VT","Virginia":"VA","Washington":"WA","West Virginia":"WV","Wisconsin":"WI","Wyoming":"WY"
+    };
+
+    const loc=[], z=[], text=[];
+    for (const [st,v] of stateAgg.entries()){
+      const ab=stateToAbbr[st];
+      if (!ab) continue;
+      const margin=v.sales ? v.profit/v.sales : 0;
+      loc.push(ab);
+      z.push(v.sales);
+      text.push(`${st}<br>Sales: ${fmtCurrency(v.sales)}<br>Profit: ${fmtCurrency(v.profit)}<br>Margin: ${(margin*100).toFixed(2)}%`);
+    }
+
+    Plotly.react("geoPlot",[{
+      type:"choropleth",
+      locationmode:"USA-states",
+      locations:loc,
+      z,
+      text,
+      hovertemplate:"%{text}<extra></extra>",
+      showscale:true,
+      colorbar:{title:"Sales"}
+    }],{
+      ...commonLayout,
+      title:{text:"3) Sales by State (Click to filter)",x:0.02,xanchor:"left"},
+      geo:{scope:"usa",bgcolor:"rgba(0,0,0,0)",showlakes:false,showland:true,landcolor:"rgba(255,255,255,0.04)"},
+      margin:{l:20,r:20,t:50,b:0}
+    },config);
+
+    document.getElementById("geoPlot").on("plotly_click",(ev)=>{
+      if (!ev?.points?.length) return;
+      const abbr=ev.points[0].location;
+      const full = Object.keys(stateToAbbr).find(k=>stateToAbbr[k]===abbr) || null;
+      crossFilter.state = (crossFilter.state===full) ? null : full;
+      redrawAll();
+    });
+  }
+
+  function renderTopProducts(filtered){
+    const N=clamp(toNumber(els.topN.value||10),5,50);
+    const agg=new Map();
+    for (const r of filtered){
+      const p=r.productName||"(Unknown Product)";
+      const curr=agg.get(p)||{sales:0,profit:0,qty:0};
+      curr.sales+=r.sales; curr.profit+=r.profit; curr.qty+=r.quantity;
+      agg.set(p,curr);
+    }
+    const rows=[...agg.entries()].map(([p,v])=>({p,...v}))
+      .sort((a,b)=>b.profit-a.profit).slice(0,N);
+
+    Plotly.react("topProducts",[{
+      type:"bar",
+      x:rows.map(r=>r.p),
+      y:rows.map(r=>r.profit),
+      customdata:rows.map(r=>`Product: ${r.p}<br>Profit: ${fmtCurrency(r.profit)}<br>Sales: ${fmtCurrency(r.sales)}<br>Qty: ${fmtNumber(r.qty)}`),
+      hovertemplate:"%{customdata}<extra></extra>",
+      name:"Profit"
+    }],{
+      ...commonLayout,
+      title:{text:`4) Top ${N} Products by Profit (Click to filter)`,x:0.02,xanchor:"left"},
+      xaxis:{title:"Product",tickangle:-35,gridcolor:"rgba(255,255,255,0.08)"},
+      yaxis:{title:"Profit (USD)",gridcolor:"rgba(255,255,255,0.08)"},
+      margin:{l:60,r:20,t:50,b:110}
+    },config);
+
+    document.getElementById("topProducts").on("plotly_click",(ev)=>{
+      if (!ev?.points?.length) return;
+      const p=ev.points[0].x;
+      crossFilter.productName = (crossFilter.productName===p) ? null : p;
+      redrawAll();
+    });
+  }
+
+  function renderDiscountScatter(filtered){
+    const byCat=new Map();
+    for (const r of filtered){
+      const cat=r.category||"(Unknown)";
+      if (!byCat.has(cat)) byCat.set(cat,[]);
+      byCat.get(cat).push(r);
+    }
+
+    const traces=[];
+    for (const [cat,rows] of byCat.entries()){
+      const x=[], y=[], size=[], text=[];
+      for (const r of rows){
+        const margin = r.sales ? (r.profit/r.sales) : 0;
+        x.push(r.discount);
+        y.push(margin);
+        size.push(Math.sqrt(Math.max(0,r.sales)));
+        text.push(
+          `Product: ${r.productName||"(Unknown)"}<br>`+
+          `Category: ${cat}<br>`+
+          `Discount: ${(r.discount*100).toFixed(0)}%<br>`+
+          `Sales: ${fmtCurrency(r.sales)}<br>`+
+          `Profit: ${fmtCurrency(r.profit)}<br>`+
+          `Margin: ${(margin*100).toFixed(2)}%`
+        );
+      }
+      traces.push({
+        type:"scatter",mode:"markers",name:cat,x,y,text,
+        hovertemplate:"%{text}<extra></extra>",
+        marker:{size, sizemode:"area", sizeref:2.0, sizemin:4, opacity:0.75, line:{width:1,color:"rgba(255,255,255,0.15)"}}
+      });
+    }
+
+    Plotly.react("discountScatter", traces, {
+      ...commonLayout,
+      title:{text:"5) Discount Impact (Discount vs Profit Margin) — Select/Lasso to focus",x:0.02,xanchor:"left"},
+      xaxis:{title:"Discount",tickformat:".0%",gridcolor:"rgba(255,255,255,0.08)"},
+      yaxis:{title:"Profit Margin",tickformat:".0%",gridcolor:"rgba(255,255,255,0.08)"},
+      legend:{orientation:"h",y:1.13,x:0,bgcolor:"rgba(0,0,0,0)"}
+    }, {responsive:true, displaylogo:false});
+
+    document.getElementById("discountScatter").on("plotly_selected",(ev)=>{
+      if (!ev?.points?.length) return;
+      const cat = ev.points[0].data?.name || null;
+      if (cat){
+        crossFilter.category = (crossFilter.category===cat) ? null : cat;
+        redrawAll();
+      }
+    });
+  }
+
+  /** NEW: Box Plot — Sales distribution by Category */
+  function renderSalesBoxPlot(filtered){
+    // Group line-item sales by category; box plot helps spot median, spread, and outliers.
+    const byCat = new Map();
+    for (const r of filtered){
+      const cat = r.category || "(Unknown)";
+      if (!byCat.has(cat)) byCat.set(cat, []);
+      byCat.get(cat).push(r.sales);
+    }
+
+    // If there are too many categories, cap to 12 by total sales for readability.
+    const catStats = [...byCat.entries()].map(([cat, arr]) => ({
+      cat,
+      arr,
+      totalSales: arr.reduce((a,v)=>a+v,0)
+    })).sort((a,b)=>b.totalSales-a.totalSales);
+
+    const MAX_CATS = 12;
+    const topCats = catStats.slice(0, MAX_CATS);
+
+    const traces = topCats.map(obj => ({
+      type: "box",
+      name: obj.cat,
+      y: obj.arr,
+      boxpoints: "outliers",   // show outliers
+      jitter: 0.3,
+      pointpos: -1.6,
+      hovertemplate:
+        `Category: ${obj.cat}<br>` +
+        `Sales: %{y:$,.2f}<extra></extra>`
+    }));
+
+    Plotly.react("salesBoxPlot", traces, {
+      ...commonLayout,
+      title: { text: "6) Box Plot — Distribution of Line-item Sales by Category (Top 12)", x: 0.02, xanchor: "left" },
+      yaxis: { title: "Line-item Sales (USD)", gridcolor: "rgba(255,255,255,0.08)" },
+      xaxis: { title: "Category", gridcolor: "rgba(255,255,255,0.08)" },
+      margin: { l: 70, r: 20, t: 60, b: 70 }
+    }, config);
+
+    // Click a box (category name) to filter by that category
+    document.getElementById("salesBoxPlot").on("plotly_click", (ev) => {
+      if (!ev?.points?.length) return;
+      const cat = ev.points[0].data?.name || null;
+      if (!cat) return;
+      crossFilter.category = (crossFilter.category === cat) ? null : cat;
+      redrawAll();
+    });
+  }
+
+  function redrawAll(){
+    if (!data.length) return;
+    const filtered = getFilteredData();
+    updateFilterStatus(filtered);
+    updateKPIs(filtered);
+
+    renderTrend(filtered);
+    renderMarginBar(filtered);
+    renderGeo(filtered);
+    renderTopProducts(filtered);
+    renderDiscountScatter(filtered);
+    renderSalesBoxPlot(filtered); // NEW
+  }
+
+  function initUI(){
+    fillSelect(els.regionSel, uniq(data.map(r=>r.region)).sort(), "All Regions");
+    fillSelect(els.segmentSel, uniq(data.map(r=>r.segment)).sort(), "All Segments");
+    fillSelect(els.categorySel, uniq(data.map(r=>r.category)).sort(), "All Categories");
+
+    const dates = data.map(r=>r.orderDate.getTime()).sort((a,b)=>a-b);
+    const minD = new Date(dates[0]);
+    const maxD = new Date(dates[dates.length-1]);
+    els.dateFrom.value = dateToISO(minD);
+    els.dateTo.value = dateToISO(maxD);
+
+    els.regionSel.value="";
+    els.segmentSel.value="";
+    els.categorySel.value="";
+    els.topN.value=10;
+
+    crossFilter = { region:null, segment:null, category:null, subCategory:null, productName:null, state:null };
+    redrawAll();
+  }
+
+  els.fileInput.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    els.fileStatus.textContent = "Reading file...";
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (!Array.isArray(parsed)) throw new Error("JSON must be an array of objects (rows).");
+
+      rawData = parsed;
+      data = normalize(rawData);
+      if (!data.length) throw new Error("No valid rows after parsing. Ensure Order Date exists in DD-MM-YYYY or ISO format.");
+
+      els.fileStatus.innerHTML = `Loaded: <strong>${file.name}</strong> | Rows: <strong>${data.length.toLocaleString()}</strong>`;
+      initUI();
+    } catch (err) {
+      console.error(err);
+      els.fileStatus.textContent = "Error: " + err.message;
+    }
+  });
+
+  els.applyBtn.addEventListener("click", () => redrawAll());
+
+  els.resetBtn.addEventListener("click", () => {
+    if (!data.length) return;
+    const dates = data.map(r=>r.orderDate.getTime()).sort((a,b)=>a-b);
+    els.dateFrom.value = dateToISO(new Date(dates[0]));
+    els.dateTo.value = dateToISO(new Date(dates[dates.length-1]));
+    els.regionSel.value="";
+    els.segmentSel.value="";
+    els.categorySel.value="";
+    els.topN.value=10;
+
+    crossFilter = { region:null, segment:null, category:null, subCategory:null, productName:null, state:null };
+    redrawAll();
+  });
+
+  els.loadSampleBtn.addEventListener("click", () => {
+    rawData = sampleJSON;
+    data = normalize(rawData);
+    els.fileStatus.innerHTML = `Loaded: <strong>Sample JSON</strong> | Rows: <strong>${data.length.toLocaleString()}</strong>`;
+    initUI();
+  });
+
+  // Optional: click trend point to set month as date range
+  document.getElementById("trendPlot").on("plotly_click", (ev) => {
+    if (!ev?.points?.length || !data.length) return;
+    const x = ev.points[0].x; // "YYYY-MM-01"
+    const d = new Date(x + "T00:00:00Z");
+    if (isNaN(d.getTime())) return;
+
+    const y = d.getUTCFullYear();
+    const m = d.getUTCMonth();
+    const start = new Date(Date.UTC(y, m, 1));
+    const end = new Date(Date.UTC(y, m+1, 0, 23, 59, 59));
+    els.dateFrom.value = dateToISO(start);
+    els.dateTo.value = dateToISO(end);
+    redrawAll();
+  });
+</script>
+</body>
+</html>
